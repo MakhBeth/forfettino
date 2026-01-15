@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database } from 'lucide-react';
+import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit } from 'lucide-react';
 
 // ============================================
 // IndexedDB Manager
@@ -446,6 +446,7 @@ export default function ForfettarioApp() {
   const [newCliente, setNewCliente] = useState({ nome: '', piva: '', email: '' });
   const [newAteco, setNewAteco] = useState('');
   const [newWorkLog, setNewWorkLog] = useState({ clienteId: '', ore: '', tipo: 'ore', note: '' });
+  const [editingFattura, setEditingFattura] = useState(null);
   
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -537,7 +538,10 @@ export default function ForfettarioApp() {
   const anniAttivita = annoCorrente - config.annoApertura;
   const aliquotaIrpef = anniAttivita < 5 ? ALIQUOTA_RIDOTTA : ALIQUOTA_STANDARD;
   
-  const fattureAnnoCorrente = fatture.filter(f => new Date(f.data).getFullYear() === annoCorrente);
+  const fattureAnnoCorrente = fatture.filter(f => {
+    const dataRiferimento = f.dataIncasso || f.data;
+    return new Date(dataRiferimento).getFullYear() === annoCorrente;
+  });
   const totaleFatturato = fattureAnnoCorrente.reduce((sum, f) => sum + f.importo, 0);
   const percentualeLimite = (totaleFatturato / LIMITE_FATTURATO) * 100;
   const rimanenteLimite = LIMITE_FATTURATO - totaleFatturato;
@@ -569,9 +573,13 @@ export default function ForfettarioApp() {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlContent, 'text/xml');
     try {
+      const dataEmissione = doc.querySelector('Data')?.textContent || new Date().toISOString().split('T')[0];
+      const dataRiferimentoPagamento = doc.querySelector('DettaglioPagamento DataRiferimentoTerminiPagamento')?.textContent;
+      
       return {
         importo: parseFloat(doc.querySelector('ImportoTotaleDocumento, ImponibileImporto')?.textContent || 0),
-        data: doc.querySelector('Data')?.textContent || new Date().toISOString().split('T')[0],
+        data: dataEmissione,
+        dataIncasso: dataRiferimentoPagamento || dataEmissione,
         numero: doc.querySelector('Numero')?.textContent || '',
         clienteNome: doc.querySelector('CessionarioCommittente Denominazione, CessionarioCommittente DatiAnagrafici Anagrafica Denominazione')?.textContent || 'Cliente',
         clientePiva: doc.querySelector('CessionarioCommittente IdFiscaleIVA IdCodice, CessionarioCommittente CodiceFiscale')?.textContent || ''
@@ -598,7 +606,7 @@ export default function ForfettarioApp() {
           clienteId = nuovoCliente.id;
         }
         
-        const nuovaFattura = { id: Date.now().toString(), numero: parsed.numero, importo: parsed.importo, data: parsed.data, clienteId, clienteNome: parsed.clienteNome };
+        const nuovaFattura = { id: Date.now().toString(), numero: parsed.numero, importo: parsed.importo, data: parsed.data, dataIncasso: parsed.dataIncasso, clienteId, clienteNome: parsed.clienteNome };
         await dbManager.put('fatture', nuovaFattura);
         setFatture([...fatture, nuovaFattura]);
         setShowModal(null);
@@ -651,6 +659,16 @@ export default function ForfettarioApp() {
     showToast('Attività registrata!');
   };
   
+  const updateDataIncasso = async () => {
+    if (!editingFattura || !editingFattura.dataIncasso) return;
+    const fatturaAggiornata = { ...editingFattura };
+    await dbManager.put('fatture', fatturaAggiornata);
+    setFatture(fatture.map(f => f.id === fatturaAggiornata.id ? fatturaAggiornata : f));
+    setEditingFattura(null);
+    setShowModal(null);
+    showToast('Data incasso aggiornata!');
+  };
+  
   // Calendario
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -678,7 +696,11 @@ export default function ForfettarioApp() {
   
   const mesiData = Array.from({ length: 12 }, (_, i) => ({
     mese: new Date(annoCorrente, i, 1).toLocaleString('it-IT', { month: 'short' }),
-    totale: fatture.filter(f => { const d = new Date(f.data); return d.getMonth() === i && d.getFullYear() === annoCorrente; }).reduce((sum, f) => sum + f.importo, 0)
+    totale: fatture.filter(f => { 
+      const dataRiferimento = f.dataIncasso || f.data;
+      const d = new Date(dataRiferimento); 
+      return d.getMonth() === i && d.getFullYear() === annoCorrente; 
+    }).reduce((sum, f) => sum + f.importo, 0)
   }));
 
   return (
@@ -845,17 +867,39 @@ export default function ForfettarioApp() {
               <div className="card">
                 {fatture.length > 0 ? (
                   <table className="table">
-                    <thead><tr><th>Numero</th><th>Data</th><th>Cliente</th><th>Importo</th><th></th></tr></thead>
+                    <thead><tr><th>Numero</th><th>Data Emissione</th><th>Data Incasso</th><th>Cliente</th><th>Importo</th><th></th></tr></thead>
                     <tbody>
-                      {fatture.sort((a, b) => new Date(b.data) - new Date(a.data)).map(f => (
-                        <tr key={f.id}>
-                          <td style={{ fontFamily: 'Space Mono' }}>{f.numero || '-'}</td>
-                          <td>{new Date(f.data).toLocaleDateString('it-IT')}</td>
-                          <td>{f.clienteNome || clienti.find(c => c.id === f.clienteId)?.nome || '-'}</td>
-                          <td style={{ fontFamily: 'Space Mono', fontWeight: 600 }}>€{f.importo.toLocaleString('it-IT')}</td>
-                          <td><button className="btn btn-danger" onClick={() => removeFattura(f.id)}><Trash2 size={16} /></button></td>
-                        </tr>
-                      ))}
+                      {fatture.sort((a, b) => new Date(b.dataIncasso || b.data) - new Date(a.dataIncasso || a.data)).map(f => {
+                        const dataIncassoDate = new Date(f.dataIncasso || f.data);
+                        const dataEmissioneDate = new Date(f.data);
+                        const isPagata = dataIncassoDate <= new Date();
+                        const isDiversa = f.dataIncasso && f.dataIncasso !== f.data;
+                        
+                        return (
+                          <tr key={f.id}>
+                            <td style={{ fontFamily: 'Space Mono' }}>{f.numero || '-'}</td>
+                            <td>{dataEmissioneDate.toLocaleDateString('it-IT')}</td>
+                            <td>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {dataIncassoDate.toLocaleDateString('it-IT')}
+                                {isDiversa && (
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--accent-orange)', fontWeight: 500 }}>modificata</span>
+                                )}
+                                <button 
+                                  className="btn btn-secondary btn-sm" 
+                                  style={{ padding: '4px 8px', marginLeft: 'auto' }}
+                                  onClick={() => { setEditingFattura({ ...f }); setShowModal('edit-data-incasso'); }}
+                                >
+                                  <Edit size={14} />
+                                </button>
+                              </div>
+                            </td>
+                            <td>{f.clienteNome || clienti.find(c => c.id === f.clienteId)?.nome || '-'}</td>
+                            <td style={{ fontFamily: 'Space Mono', fontWeight: 600 }}>€{f.importo.toLocaleString('it-IT')}</td>
+                            <td><button className="btn btn-danger" onClick={() => removeFattura(f.id)}><Trash2 size={16} /></button></td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 ) : (
@@ -1125,6 +1169,39 @@ export default function ForfettarioApp() {
                 <Upload size={40} style={{ marginBottom: 16, color: 'var(--accent-primary)' }} />
                 <p style={{ fontWeight: 500 }}>Seleziona JSON</p>
               </label>
+            </div>
+          </div>
+        )}
+        
+        {showModal === 'edit-data-incasso' && editingFattura && (
+          <div className="modal-overlay" onClick={() => setShowModal(null)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Modifica Data Incasso</h3>
+                <button className="close-btn" onClick={() => setShowModal(null)}><X size={20} /></button>
+              </div>
+              <div style={{ padding: 16, background: 'var(--bg-secondary)', borderRadius: 12, marginBottom: 20 }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>Fattura</div>
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>{editingFattura.numero || 'N/A'} - {editingFattura.clienteNome}</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  Data emissione: {new Date(editingFattura.data).toLocaleDateString('it-IT')}
+                </div>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Data Incasso (Principio di Cassa)</label>
+                <input 
+                  type="date" 
+                  className="input-field" 
+                  value={editingFattura.dataIncasso || editingFattura.data} 
+                  onChange={(e) => setEditingFattura({ ...editingFattura, dataIncasso: e.target.value })} 
+                />
+                <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  💡 Per il regime forfettario, il fatturato si conta quando viene effettivamente incassato (principio di cassa).
+                </div>
+              </div>
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={updateDataIncasso}>
+                <Check size={18} /> Salva
+              </button>
             </div>
           </div>
         )}
