@@ -690,6 +690,27 @@ export default function ForfettarioApp() {
   const formatDate = (date) => date.toISOString().split('T')[0];
   const today = formatDate(new Date());
   
+  // Helper per selettore anno
+  const yearOptions = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i);
+  
+  // Componente badge dati storici
+  const HistoricalDataBadge = () => {
+    if (annoSelezionato >= new Date().getFullYear()) return null;
+    return (
+      <div style={{ 
+        padding: '8px 16px', 
+        background: 'var(--accent-orange)', 
+        color: 'white', 
+        borderRadius: 8, 
+        fontSize: '0.85rem',
+        display: 'inline-block',
+        marginBottom: 20
+      }}>
+        📊 Dati storici {annoSelezionato}
+      </div>
+    );
+  };
+  
   // Grafici
   const pieData = fatturatoPerCliente.slice(0, 5).map((c, i) => ({
     name: c.nome, value: c.totale, color: ['#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff'][i]
@@ -765,10 +786,9 @@ export default function ForfettarioApp() {
                     onChange={(e) => setAnnoSelezionato(parseInt(e.target.value))}
                     style={{ width: 'auto', padding: '8px 12px', fontSize: '1rem', fontWeight: 600 }}
                   >
-                    {Array.from({ length: 10 }, (_, i) => {
-                      const year = new Date().getFullYear() - i;
-                      return <option key={year} value={year}>{year}</option>;
-                    })}
+                    {yearOptions.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
                   </select>
                   <button 
                     className="btn" 
@@ -781,19 +801,7 @@ export default function ForfettarioApp() {
                 </div>
               </div>
               
-              {annoSelezionato < new Date().getFullYear() && (
-                <div style={{ 
-                  padding: '8px 16px', 
-                  background: 'var(--accent-orange)', 
-                  color: 'white', 
-                  borderRadius: 8, 
-                  fontSize: '0.85rem',
-                  display: 'inline-block',
-                  marginBottom: 20
-                }}>
-                  📊 Dati storici {annoSelezionato}
-                </div>
-              )}
+              <HistoricalDataBadge />
               
               <div className="grid-4">
                 <div className="card">
@@ -919,10 +927,9 @@ export default function ForfettarioApp() {
                       onChange={(e) => setAnnoSelezionato(parseInt(e.target.value))}
                       style={{ width: 'auto', padding: '8px 12px' }}
                     >
-                      {Array.from({ length: 10 }, (_, i) => {
-                        const year = new Date().getFullYear() - i;
-                        return <option key={year} value={year}>{year}</option>;
-                      })}
+                      {yearOptions.map(year => (
+                        <option key={year} value={year}>{year}</option>
+                      ))}
                     </select>
                     <button 
                       className="btn btn-secondary" 
@@ -939,19 +946,7 @@ export default function ForfettarioApp() {
                 </div>
               </div>
               
-              {annoSelezionato < new Date().getFullYear() && (
-                <div style={{ 
-                  padding: '8px 16px', 
-                  background: 'var(--accent-orange)', 
-                  color: 'white', 
-                  borderRadius: 8, 
-                  fontSize: '0.85rem',
-                  display: 'inline-block',
-                  marginBottom: 20
-                }}>
-                  📊 Dati storici {annoSelezionato}
-                </div>
-              )}
+              <HistoricalDataBadge />
               
               <div className="card">
                 {fatture.filter(f => {
