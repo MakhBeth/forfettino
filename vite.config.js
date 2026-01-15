@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Forfettario - Gestione P.IVA',
-        short_name: 'Forfettario',
+        name: 'ForfettAIro - Vibecoded Gestione P.IVA Semplificata',
+        short_name: 'ForfettAIro',
         description: 'App per gestire il regime forfettario italiano',
         theme_color: '#6366f1',
         background_color: '#0a0a0f',

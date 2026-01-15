@@ -708,8 +708,8 @@ export default function ForfettarioApp() {
       <style>{styles}</style>
       <div className="app-container">
         <nav className="sidebar">
-          <div className="logo">FORFETTARIO</div>
-          <div className="logo-sub">Gestione P.IVA Semplificata</div>
+          <div className="logo">ForfettAIro</div>
+          <div className="logo-sub">Vibecoded Gestione P.IVA Semplificata</div>
           
           <div className="nav-items">
             <div className={`nav-item ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentPage('dashboard')}>
