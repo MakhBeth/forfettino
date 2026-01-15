@@ -437,6 +437,7 @@ export default function ForfettarioApp() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [dbReady, setDbReady] = useState(false);
   const [toast, setToast] = useState(null);
+  const [annoSelezionato, setAnnoSelezionato] = useState(new Date().getFullYear());
   
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [clienti, setClienti] = useState([]);
@@ -540,7 +541,7 @@ export default function ForfettarioApp() {
   
   const fattureAnnoCorrente = fatture.filter(f => {
     const dataRiferimento = f.dataIncasso || f.data;
-    return new Date(dataRiferimento).getFullYear() === annoCorrente;
+    return new Date(dataRiferimento).getFullYear() === annoSelezionato;
   });
   const totaleFatturato = fattureAnnoCorrente.reduce((sum, f) => sum + f.importo, 0);
   const percentualeLimite = (totaleFatturato / LIMITE_FATTURATO) * 100;
@@ -695,11 +696,11 @@ export default function ForfettarioApp() {
   }));
   
   const mesiData = Array.from({ length: 12 }, (_, i) => ({
-    mese: new Date(annoCorrente, i, 1).toLocaleString('it-IT', { month: 'short' }),
+    mese: new Date(annoSelezionato, i, 1).toLocaleString('it-IT', { month: 'short' }),
     totale: fatture.filter(f => { 
       const dataRiferimento = f.dataIncasso || f.data;
       const d = new Date(dataRiferimento); 
-      return d.getMonth() === i && d.getFullYear() === annoCorrente; 
+      return d.getMonth() === i && d.getFullYear() === annoSelezionato; 
     }).reduce((sum, f) => sum + f.importo, 0)
   }));
 
@@ -745,10 +746,57 @@ export default function ForfettarioApp() {
           {/* DASHBOARD */}
           {currentPage === 'dashboard' && (
             <>
-              <div className="page-header">
-                <h1 className="page-title">Dashboard {annoCorrente}</h1>
-                <p className="page-subtitle">Panoramica della tua attività</p>
+              <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h1 className="page-title">Dashboard {annoSelezionato}</h1>
+                  <p className="page-subtitle">Panoramica della tua attività</p>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <button 
+                    className="btn" 
+                    onClick={() => setAnnoSelezionato(annoSelezionato - 1)}
+                    style={{ padding: '8px 12px' }}
+                  >
+                    ←
+                  </button>
+                  <select 
+                    className="input-field" 
+                    value={annoSelezionato} 
+                    onChange={(e) => setAnnoSelezionato(parseInt(e.target.value))}
+                    style={{ width: 'auto', padding: '8px 12px', fontSize: '1rem', fontWeight: 600 }}
+                  >
+                    {Array.from({ length: 10 }, (_, i) => {
+                      const year = new Date().getFullYear() - i;
+                      return <option key={year} value={year}>{year}</option>;
+                    })}
+                  </select>
+                  <button 
+                    className="btn" 
+                    onClick={() => setAnnoSelezionato(annoSelezionato + 1)}
+                    disabled={annoSelezionato >= new Date().getFullYear()}
+                    style={{ padding: '8px 12px' }}
+                  >
+                    →
+                  </button>
+                </div>
               </div>
+              
+              {annoSelezionato < new Date().getFullYear() && (
+                <div style={{ 
+                  padding: '12px 16px', 
+                  background: 'rgba(251, 191, 36, 0.1)', 
+                  border: '1px solid rgba(251, 191, 36, 0.3)', 
+                  borderRadius: '12px', 
+                  marginBottom: '20px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: '#fbbf24'
+                }}>
+                  <Clock size={18} />
+                  <span style={{ fontWeight: 500 }}>Stai visualizzando dati storici dell'anno {annoSelezionato}</span>
+                </div>
+              )}
               
               <div className="grid-4">
                 <div className="card">
