@@ -539,6 +539,7 @@ export default function ForfettarioApp() {
   const annoCorrente = new Date().getFullYear();
   const anniAttivita = annoCorrente - config.annoApertura;
   const aliquotaIrpef = anniAttivita < 5 ? ALIQUOTA_RIDOTTA : ALIQUOTA_STANDARD;
+  const annoPiuVecchio = annoCorrente - MAX_HISTORICAL_YEARS + 1;
   
   const fattureAnnoCorrente = fatture.filter(f => {
     const dataRiferimento = f.dataIncasso || f.data;
@@ -756,7 +757,7 @@ export default function ForfettarioApp() {
                   <button 
                     className="btn" 
                     onClick={() => setAnnoSelezionato(annoSelezionato - 1)}
-                    disabled={annoSelezionato <= annoCorrente - MAX_HISTORICAL_YEARS + 1}
+                    disabled={annoSelezionato <= annoPiuVecchio}
                     style={{ padding: '8px 12px' }}
                   >
                     ←
@@ -767,7 +768,7 @@ export default function ForfettarioApp() {
                     onChange={(e) => setAnnoSelezionato(parseInt(e.target.value))}
                     style={{ width: 'auto', padding: '8px 12px', fontSize: '1rem', fontWeight: 600 }}
                   >
-                    {Array.from({ length: MAX_HISTORICAL_YEARS }, (_, i) => {
+                    {Array.from({ length: annoCorrente - annoPiuVecchio + 1 }, (_, i) => {
                       const year = annoCorrente - i;
                       return <option key={year} value={year}>{year}</option>;
                     })}
