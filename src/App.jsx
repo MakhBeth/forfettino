@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit } from 'lucide-react';
+import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit, ChevronUp, ChevronDown } from 'lucide-react';
 
 // ============================================
 // IndexedDB Manager
@@ -292,6 +292,16 @@ const styles = `
   .table td { padding: 16px 12px; border-bottom: 1px solid var(--border); }
   .table tr:hover { background: var(--bg-hover); }
   
+  .table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
+  }
+  
+  .table th.sortable:hover {
+    background: var(--bg-hover);
+  }
+  
   .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
   .badge-green { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
   
@@ -439,6 +449,9 @@ export default function ForfettarioApp() {
   const [dbReady, setDbReady] = useState(false);
   const [toast, setToast] = useState(null);
   const [annoSelezionato, setAnnoSelezionato] = useState(new Date().getFullYear());
+  
+  const [filtroAnnoFatture, setFiltroAnnoFatture] = useState('tutte');
+  const [ordinamentoFatture, setOrdinamentoFatture] = useState({ campo: 'dataIncasso', direzione: 'desc' });
   
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [clienti, setClienti] = useState([]);
@@ -692,6 +705,20 @@ export default function ForfettarioApp() {
   const formatDate = (date) => date.toISOString().split('T')[0];
   const today = formatDate(new Date());
   
+  // Handler per ordinamento fatture
+  const handleSort = (campo) => {
+    setOrdinamentoFatture(prev => ({
+      campo,
+      direzione: prev.campo === campo && prev.direzione === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+  
+  // Componente icona ordinamento
+  const SortIcon = ({ campo }) => {
+    if (ordinamentoFatture.campo !== campo) return null;
+    return ordinamentoFatture.direzione === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
+  };
+  
   // Grafici
   const pieData = fatturatoPerCliente.slice(0, 5).map((c, i) => ({
     name: c.nome, value: c.totale, color: ['#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff'][i]
@@ -910,17 +937,96 @@ export default function ForfettarioApp() {
                   <h1 className="page-title">Fatture</h1>
                   <p className="page-subtitle">Gestisci le tue fatture elettroniche</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => setShowModal('upload-fattura')}>
-                  <Upload size={18} /> Carica XML
-                </button>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <select 
+                    className="input-field" 
+                    value={filtroAnnoFatture} 
+                    onChange={(e) => setFiltroAnnoFatture(e.target.value)}
+                    style={{ width: 'auto', padding: '8px 12px' }}
+                  >
+                    <option value="tutte">Tutte le fatture</option>
+                    <option value="anno">Anno {annoSelezionato}</option>
+                  </select>
+                  <button className="btn btn-primary" onClick={() => setShowModal('upload-fattura')}>
+                    <Upload size={18} /> Carica XML
+                  </button>
+                </div>
               </div>
               
               <div className="card">
                 {fatture.length > 0 ? (
-                  <table className="table">
-                    <thead><tr><th>Numero</th><th>Data Emissione</th><th>Data Incasso</th><th>Cliente</th><th>Importo</th><th></th></tr></thead>
-                    <tbody>
-                      {fatture.sort((a, b) => new Date(b.dataIncasso || b.data) - new Date(a.dataIncasso || a.data)).map(f => {
+                  (() => {
+                    // Filtra fatture
+                    const fattureFiltrate = fatture.filter(f => {
+                      if (filtroAnnoFatture === 'anno') {
+                        const dataRiferimento = f.dataIncasso || f.data;
+                        return new Date(dataRiferimento).getFullYear() === annoSelezionato;
+                      }
+                      return true;
+                    });
+                    
+                    // Ordina fatture filtrate
+                    const fattureOrdinate = [...fattureFiltrate].sort((a, b) => {
+                      const { campo, direzione } = ordinamentoFatture;
+                      let confronto = 0;
+                      
+                      switch(campo) {
+                        case 'numero':
+                          confronto = (a.numero || '').localeCompare(b.numero || '');
+                          break;
+                        case 'data':
+                          confronto = new Date(a.data) - new Date(b.data);
+                          break;
+                        case 'dataIncasso':
+                          const dataA = new Date(a.dataIncasso || a.data);
+                          const dataB = new Date(b.dataIncasso || b.data);
+                          confronto = dataA - dataB;
+                          break;
+                        case 'clienteNome':
+                          confronto = (a.clienteNome || '').localeCompare(b.clienteNome || '');
+                          break;
+                        case 'importo':
+                          confronto = a.importo - b.importo;
+                          break;
+                      }
+                      
+                      return direzione === 'asc' ? confronto : -confronto;
+                    });
+                    
+                    return (
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th className="sortable" onClick={() => handleSort('numero')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                Numero <SortIcon campo="numero" />
+                              </div>
+                            </th>
+                            <th className="sortable" onClick={() => handleSort('data')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                Data Emissione <SortIcon campo="data" />
+                              </div>
+                            </th>
+                            <th className="sortable" onClick={() => handleSort('dataIncasso')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                Data Incasso <SortIcon campo="dataIncasso" />
+                              </div>
+                            </th>
+                            <th className="sortable" onClick={() => handleSort('clienteNome')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                Cliente <SortIcon campo="clienteNome" />
+                              </div>
+                            </th>
+                            <th className="sortable" onClick={() => handleSort('importo')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                Importo <SortIcon campo="importo" />
+                              </div>
+                            </th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {fattureOrdinate.map(f => {
                         const dataIncassoDate = new Date(f.dataIncasso || f.data);
                         const dataEmissioneDate = new Date(f.data);
                         const isPagata = dataIncassoDate <= new Date();
@@ -953,6 +1059,8 @@ export default function ForfettarioApp() {
                       })}
                     </tbody>
                   </table>
+                    );
+                  })()
                 ) : (
                   <div className="empty-state"><FileText size={48} /><p>Nessuna fattura</p></div>
                 )}
