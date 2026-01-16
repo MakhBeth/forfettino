@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit } from 'lucide-react';
+import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit, Github } from 'lucide-react';
 
 // ============================================
 // IndexedDB Manager
@@ -393,6 +393,51 @@ const styles = `
   .backup-info h4 { font-size: 0.9rem; margin-bottom: 8px; color: var(--text-primary); }
   .backup-info p { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; }
 
+  .footer {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .footer-credits {
+    margin-bottom: 8px;
+  }
+
+  .footer-credits a {
+    color: var(--accent-primary);
+    text-decoration: none;
+    font-weight: 500;
+  }
+
+  .footer-credits a:hover {
+    text-decoration: underline;
+  }
+
+  .footer-privacy {
+    margin-bottom: 8px;
+    font-size: 0.75rem;
+  }
+
+  .footer-link {
+    margin-top: 8px;
+  }
+
+  .footer-link a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-link a:hover {
+    color: var(--accent-primary);
+  }
+
   @media (max-width: 1024px) {
     .grid-4 { grid-template-columns: repeat(2, 1fr); }
     .grid-3 { grid-template-columns: repeat(2, 1fr); }
@@ -741,6 +786,20 @@ export default function ForfettarioApp() {
             <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => setShowModal('import')}>
               <Upload size={16} /> Import
             </button>
+          </div>
+          
+          <div className="footer">
+            <div className="footer-credits">
+              Made by <a href="https://github.com/MakhBeth" target="_blank" rel="noopener noreferrer">MakhBeth</a> with AI
+            </div>
+            <div className="footer-privacy">
+              🔒 All data stays local
+            </div>
+            <div className="footer-link">
+              <a href="https://github.com/MakhBeth/forfettAIro" target="_blank" rel="noopener noreferrer">
+                <Github size={16} /> View on GitHub
+              </a>
+            </div>
           </div>
         </nav>
         
