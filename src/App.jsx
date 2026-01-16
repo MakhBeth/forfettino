@@ -750,7 +750,7 @@ export default function ForfettarioApp() {
     const colors = [
       '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', 
       '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#10b981',
-      '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1'
+      '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#a855f7'
     ];
     // Simple hash function to generate consistent index
     let hash = 0;
@@ -1192,13 +1192,14 @@ export default function ForfettarioApp() {
                     
                     // Get primary client for preview (client with most hours)
                     let previewText = '';
+                    let primaryClientId = null;
                     if (hasWork) {
                       const clientHours = {};
                       dayLogs.forEach(log => {
                         const hours = log.tipo === 'giornata' ? 8 : parseFloat(log.ore || 0);
                         clientHours[log.clienteId] = (clientHours[log.clienteId] || 0) + hours;
                       });
-                      const primaryClientId = Object.keys(clientHours).reduce((a, b) => 
+                      primaryClientId = Object.keys(clientHours).reduce((a, b) => 
                         clientHours[a] > clientHours[b] ? a : b
                       );
                       const primaryClient = clienti.find(c => c.id === primaryClientId);
@@ -1223,7 +1224,7 @@ export default function ForfettarioApp() {
                         }}
                       >
                         <div className="calendar-day-number">{day.date.getDate()}</div>
-                        {hasWork && <div className="calendar-day-preview" style={{ color: getClientColor(dayLogs[0].clienteId) }}>{previewText}</div>}
+                        {hasWork && primaryClientId && <div className="calendar-day-preview" style={{ color: getClientColor(primaryClientId) }}>{previewText}</div>}
                       </div>
                     );
                   })}
