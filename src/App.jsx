@@ -793,7 +793,7 @@ export default function ForfettarioApp() {
               Made by <a href="https://github.com/MakhBeth" target="_blank" rel="noopener noreferrer">MakhBeth</a> with AI
             </div>
             <div className="footer-privacy">
-              🔒 All data stay local
+              🔒 All data stays local
             </div>
             <div className="footer-link">
               <a href="https://github.com/MakhBeth/forfettAIro" target="_blank" rel="noopener noreferrer">
