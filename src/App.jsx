@@ -988,6 +988,12 @@ export default function ForfettarioApp() {
                         case 'importo':
                           confronto = a.importo - b.importo;
                           break;
+                        default:
+                          // Default: sort by dataIncasso
+                          const defaultDataA = new Date(a.dataIncasso || a.data);
+                          const defaultDataB = new Date(b.dataIncasso || b.data);
+                          confronto = defaultDataA - defaultDataB;
+                          break;
                       }
                       
                       return direzione === 'asc' ? confronto : -confronto;
