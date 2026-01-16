@@ -754,6 +754,12 @@ export default function ForfettarioApp() {
     }).reduce((sum, f) => sum + f.importo, 0)
   }));
 
+  // Anni disponibili nelle fatture
+  const anniDisponibili = [...new Set(fatture.map(f => {
+    const dataRiferimento = f.dataIncasso || f.data;
+    return new Date(dataRiferimento).getFullYear();
+  }))].sort((a, b) => b - a);
+
   // Filtro fatture per anno
   const fattureFiltrate = filtroAnnoFatture === 'tutte' 
     ? fatture 
@@ -1025,7 +1031,9 @@ export default function ForfettarioApp() {
                     style={{ width: 'auto', padding: '8px 12px' }}
                   >
                     <option value="tutte">Tutte le fatture</option>
-                    <option value={annoSelezionato}>Anno {annoSelezionato}</option>
+                    {anniDisponibili.map(anno => (
+                      <option key={anno} value={anno}>Anno {anno}</option>
+                    ))}
                   </select>
                   <button className="btn btn-primary" onClick={() => setShowModal('upload-fattura')}>
                     <Upload size={18} /> Carica XML
