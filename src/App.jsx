@@ -304,19 +304,39 @@ const styles = `
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    padding: 8px 4px;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s;
     font-size: 0.9rem;
     position: relative;
-    min-height: 60px;
+    min-height: 80px;
+    background: var(--bg-secondary);
   }
   
   .calendar-day:hover { background: var(--bg-hover); }
   .calendar-day.today { border: 2px solid var(--accent-primary); }
   .calendar-day.other-month { color: var(--text-muted); opacity: 0.5; }
+  .calendar-day.weekend { background: rgba(139, 92, 246, 0.08); }
   .calendar-day.has-work { background: rgba(99, 102, 241, 0.2); }
+  .calendar-day.weekend.has-work { background: rgba(99, 102, 241, 0.25); }
+  
+  .calendar-day-number {
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  
+  .calendar-day-preview {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    text-align: center;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 2px;
+  }
   
   .work-indicator { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-primary); position: absolute; bottom: 8px; }
   
@@ -474,7 +494,8 @@ const DEFAULT_CONFIG = {
   partitaIva: '',
   annoApertura: new Date().getFullYear(),
   codiciAteco: [],
-  nomeAttivita: ''
+  nomeAttivita: '',
+  aliquotaOverride: null
 };
 
 export default function ForfettarioApp() {
@@ -586,7 +607,11 @@ export default function ForfettarioApp() {
   // Calcoli
   const annoCorrente = new Date().getFullYear();
   const anniAttivita = annoCorrente - config.annoApertura;
-  const aliquotaIrpef = anniAttivita < 5 ? ALIQUOTA_RIDOTTA : ALIQUOTA_STANDARD;
+  const aliquotaIrpefBase = anniAttivita < 5 ? ALIQUOTA_RIDOTTA : ALIQUOTA_STANDARD;
+  // Use override if set and valid, otherwise use base rate
+  const aliquotaIrpef = (config.aliquotaOverride !== null && config.aliquotaOverride >= 0 && config.aliquotaOverride <= 100) 
+    ? config.aliquotaOverride / 100 
+    : aliquotaIrpefBase;
   const annoPiuVecchio = annoCorrente - MAX_HISTORICAL_YEARS + 1;
   
   const fattureAnnoCorrente = fatture.filter(f => {
@@ -720,6 +745,21 @@ export default function ForfettarioApp() {
     showToast('Data incasso aggiornata!');
   };
   
+  // Generate stable color for client
+  const getClientColor = (clientId) => {
+    const colors = [
+      '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', 
+      '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#10b981',
+      '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1'
+    ];
+    // Simple hash function to generate consistent index
+    let hash = 0;
+    for (let i = 0; i < clientId.length; i++) {
+      hash = clientId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+  
   // Calendario
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
@@ -828,10 +868,7 @@ export default function ForfettarioApp() {
             </div>
           </div>
           
-          <div className="db-status">
-            <div className={`db-status-dot ${!dbReady ? 'loading' : ''}`} />
-            <span>{dbReady ? 'IndexedDB pronto' : 'Caricamento...'}</span>
-          </div>
+
           
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={handleExport}>
@@ -935,7 +972,11 @@ export default function ForfettarioApp() {
                 <div className="card">
                   <div className="card-title">IRPEF da accantonare</div>
                   <div className="stat-value" style={{ color: 'var(--accent-orange)' }}>€{irpefDovuta.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</div>
-                  <div className="stat-label">Aliquota {aliquotaIrpef * 100}% {anniAttivita < 5 && '(agevolato)'}</div>
+                  <div className="stat-label">
+                    Aliquota {(aliquotaIrpef * 100).toFixed(2)}% 
+                    {config.aliquotaOverride !== null && ' (custom)'}
+                    {config.aliquotaOverride === null && anniAttivita < 5 && ' (agevolato)'}
+                  </div>
                 </div>
                 
                 <div className="card">
@@ -1139,12 +1180,50 @@ export default function ForfettarioApp() {
                   {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => <div key={d} className="calendar-header">{d}</div>)}
                   {getDaysInMonth(currentMonth).map((day, i) => {
                     const dateStr = formatDate(day.date);
-                    const hasWork = workLogs.some(w => w.data === dateStr);
+                    const dayOfWeek = day.date.getDay(); // 0 = Sunday, 6 = Saturday
+                    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+                    const dayLogs = workLogs.filter(w => w.data === dateStr);
+                    const hasWork = dayLogs.length > 0;
+                    
+                    // Calculate total hours for the day
+                    const totalHours = dayLogs.reduce((sum, log) => {
+                      return sum + (log.tipo === 'giornata' ? 8 : parseFloat(log.ore || 0));
+                    }, 0);
+                    
+                    // Get primary client for preview (client with most hours)
+                    let previewText = '';
+                    if (hasWork) {
+                      const clientHours = {};
+                      dayLogs.forEach(log => {
+                        const hours = log.tipo === 'giornata' ? 8 : parseFloat(log.ore || 0);
+                        clientHours[log.clienteId] = (clientHours[log.clienteId] || 0) + hours;
+                      });
+                      const primaryClientId = Object.keys(clientHours).reduce((a, b) => 
+                        clientHours[a] > clientHours[b] ? a : b
+                      );
+                      const primaryClient = clienti.find(c => c.id === primaryClientId);
+                      if (primaryClient) {
+                        const clientName = primaryClient.nome.length > 15 
+                          ? primaryClient.nome.substring(0, 12) + '...' 
+                          : primaryClient.nome;
+                        previewText = `${clientName} — ${totalHours}h`;
+                      }
+                    }
+                    
                     return (
-                      <div key={i} className={`calendar-day ${day.otherMonth ? 'other-month' : ''} ${dateStr === today ? 'today' : ''} ${hasWork ? 'has-work' : ''}`}
-                        onClick={() => { if (!day.otherMonth) { setSelectedDate(dateStr); setShowModal('add-work'); } }}>
-                        {day.date.getDate()}
-                        {hasWork && <div className="work-indicator" />}
+                      <div 
+                        key={i} 
+                        className={`calendar-day ${day.otherMonth ? 'other-month' : ''} ${dateStr === today ? 'today' : ''} ${isWeekend ? 'weekend' : ''} ${hasWork ? 'has-work' : ''}`}
+                        onClick={() => { 
+                          if (!day.otherMonth) { 
+                            // Fix: Use the actual date string instead of creating a new date
+                            setSelectedDate(dateStr); 
+                            setShowModal('add-work'); 
+                          } 
+                        }}
+                      >
+                        <div className="calendar-day-number">{day.date.getDate()}</div>
+                        {hasWork && <div className="calendar-day-preview" style={{ color: getClientColor(dayLogs[0].clienteId) }}>{previewText}</div>}
                       </div>
                     );
                   })}
@@ -1186,8 +1265,8 @@ export default function ForfettarioApp() {
               <div className="card">
                 <div className="card-title"><Database size={16} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />Backup & Ripristino</div>
                 <div className="backup-section">
-                  <button className="btn btn-success" onClick={handleExport}><Download size={18} /> Esporta JSON</button>
-                  <button className="btn btn-primary" onClick={() => setShowModal('import')}><Upload size={18} /> Importa Backup</button>
+                  <button className="btn btn-success" onClick={handleExport}><Download size={18} /> Esporta backup</button>
+                  <button className="btn btn-primary" onClick={() => setShowModal('import')}><Upload size={18} /> Importa backup</button>
                 </div>
                 <div className="backup-info">
                   <h4>ℹ️ Info backup</h4>
@@ -1211,6 +1290,34 @@ export default function ForfettarioApp() {
                     <input type="number" className="input-field" value={config.annoApertura} onChange={(e) => setConfig({ ...config, annoApertura: parseInt(e.target.value) })} min={2000} max={annoCorrente} />
                     <div style={{ marginTop: 8, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                       {anniAttivita < 5 ? `✓ Aliquota 5% (${5 - anniAttivita} anni rimasti)` : 'Aliquota 15%'}
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Override Aliquota IRPEF (opzionale)</label>
+                    <input 
+                      type="number" 
+                      className="input-field" 
+                      value={config.aliquotaOverride !== null ? config.aliquotaOverride : ''} 
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          setConfig({ ...config, aliquotaOverride: null });
+                        } else {
+                          const num = parseFloat(val);
+                          if (!isNaN(num) && num >= 0 && num <= 100) {
+                            setConfig({ ...config, aliquotaOverride: num });
+                          }
+                        }
+                      }}
+                      placeholder="Es: 5 o 15"
+                      min={0}
+                      max={100}
+                      step={0.01}
+                    />
+                    <div style={{ marginTop: 8, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      {config.aliquotaOverride !== null 
+                        ? `✓ Usando aliquota custom: ${config.aliquotaOverride}%`
+                        : 'Lascia vuoto per usare l\'aliquota automatica'}
                     </div>
                   </div>
                 </div>
@@ -1316,7 +1423,9 @@ export default function ForfettarioApp() {
               </div>
               <div style={{ padding: 12, background: 'var(--bg-secondary)', borderRadius: 8, marginBottom: 20, textAlign: 'center' }}>
                 <Clock size={20} style={{ marginBottom: 4, color: 'var(--accent-primary)' }} />
-                <div style={{ fontWeight: 500 }}>{selectedDate && new Date(selectedDate).toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+                <div style={{ fontWeight: 500 }}>
+                  {selectedDate && new Date(selectedDate + 'T12:00:00').toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </div>
               </div>
               <div className="input-group">
                 <label className="input-label">Cliente *</label>
