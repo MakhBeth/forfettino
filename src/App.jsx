@@ -978,6 +978,7 @@ export default function ForfettarioApp() {
                           confronto = new Date(a.data) - new Date(b.data);
                           break;
                         case 'dataIncasso':
+                        default:
                           const dataA = new Date(a.dataIncasso || a.data);
                           const dataB = new Date(b.dataIncasso || b.data);
                           confronto = dataA - dataB;
@@ -987,12 +988,6 @@ export default function ForfettarioApp() {
                           break;
                         case 'importo':
                           confronto = a.importo - b.importo;
-                          break;
-                        default:
-                          // Default: sort by dataIncasso
-                          const defaultDataA = new Date(a.dataIncasso || a.data);
-                          const defaultDataB = new Date(b.dataIncasso || b.data);
-                          confronto = defaultDataA - defaultDataB;
                           break;
                       }
                       
