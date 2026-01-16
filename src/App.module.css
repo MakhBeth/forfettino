@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-card: #1a1a24;
+  --bg-hover: #22222e;
+  --accent-primary: #6366f1;
+  --accent-secondary: #818cf8;
+  --accent-green: #10b981;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border: #2a2a3a;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
