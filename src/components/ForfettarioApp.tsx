@@ -640,6 +640,13 @@ const processBatchXmlFiles = async (
   for (let i = 0; i < xmlFiles.length; i++) {
     const { name, content } = xmlFiles[i];
     try {
+      // Check if file content is missing (read error)
+      if (!content) {
+        summary.failed++;
+        summary.failedFiles.push({ filename: name, error: 'Impossibile leggere il file' });
+        continue;
+      }
+      
       const parsed = parseFatturaXML(content);
       
       if (!parsed) {
@@ -648,8 +655,19 @@ const processBatchXmlFiles = async (
         continue;
       }
       
-      // Check for duplicate
-      const duplicateKey = computeDuplicateKey(parsed.numero, parsed.data, parsed.importo);
+      // Check for duplicate - catch errors from invalid dates
+      let duplicateKey: string;
+      try {
+        duplicateKey = computeDuplicateKey(parsed.numero, parsed.data, parsed.importo);
+      } catch (error) {
+        summary.failed++;
+        summary.failedFiles.push({ 
+          filename: name, 
+          error: error?.message || String(error) || 'Errore validazione dati' 
+        });
+        continue;
+      }
+      
       if (existingDuplicateKeys.has(duplicateKey)) {
         summary.duplicates++;
         continue;
@@ -697,13 +715,11 @@ const processBatchXmlFiles = async (
     }
   }
   
-  // Save all new clienti and fatture
-  for (const cliente of newClienti) {
-    await dbManager.put('clienti', cliente);
-  }
-  for (const fattura of newFatture) {
-    await dbManager.put('fatture', fattura);
-  }
+  // Save all new clienti and fatture in parallel for better performance
+  await Promise.all([
+    ...newClienti.map(cliente => dbManager.put('clienti', cliente)),
+    ...newFatture.map(fattura => dbManager.put('fatture', fattura))
+  ]);
   
   return { summary, newFatture, newClienti };
 };
@@ -926,8 +942,8 @@ export default function ForfettarioApp(): JSX.Element {
         const content = await file.text();
         xmlFiles.push({ name: file.name, content });
       } catch (error) {
-        // If we can't even read the file, add it to failed list
-        xmlFiles.push({ name: file.name, content: '' });
+        // File read error - will be handled in processing with proper error message
+        xmlFiles.push({ name: file.name, content: null as any });
       }
     }
     
@@ -947,9 +963,9 @@ export default function ForfettarioApp(): JSX.Element {
       setFatture([...fatture, ...newFatture]);
     }
     
-    // Show summary
-    setImportSummary(summary);
+    // Close upload modal and show summary
     setShowModal('import-summary');
+    setImportSummary(summary);
   };
   
   // ZIP import handler
@@ -962,6 +978,7 @@ export default function ForfettarioApp(): JSX.Element {
       
       if (xmlFiles.length === 0) {
         showToast('Nessun file XML trovato nel ZIP', 'error');
+        e.target.value = '';
         return;
       }
       
@@ -981,11 +998,12 @@ export default function ForfettarioApp(): JSX.Element {
         setFatture([...fatture, ...newFatture]);
       }
       
-      // Show summary
-      setImportSummary(summary);
+      // Close upload modal and show summary
       setShowModal('import-summary');
+      setImportSummary(summary);
     } catch (error) {
-      showToast(error?.message || String(error) || 'Errore caricamento ZIP', 'error');
+      const errorMsg = error?.message || String(error) || 'errore sconosciuto';
+      showToast('Errore caricamento ZIP: ' + errorMsg, 'error');
     }
     
     // Clear input to allow re-uploading same file
