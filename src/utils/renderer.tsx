@@ -15,7 +15,6 @@ import {
 	Link,
 } from "@react-pdf/renderer";
 import type { Options } from "./types/Options";
-import { oc } from "ts-optchain";
 import translations from "./translations.json";
 
 // Create Document Component
@@ -26,14 +25,13 @@ const GeneratePDF = (invoice: Invoice, options: Options) => {
 	// 	family: "Roboto-Mono",
 	// });
 
-	const ocColors = oc(options.colors);
 	const colors = {
-		primary: ocColors.primary("#6699cc"),
-		text: ocColors.text("#033243"),
-		lighterText: ocColors.lighterText("#476976"),
-		footerText: ocColors.footerText("#8CA1A9"),
-		lighterGray: ocColors.lighterGray("#E8ECED"),
-		tableHeader: ocColors.tableHeader("#D1D9DC"),
+		primary: options.colors?.primary || "#6699cc",
+		text: options.colors?.text || "#033243",
+		lighterText: options.colors?.lighterText || "#476976",
+		footerText: options.colors?.footerText || "#8CA1A9",
+		lighterGray: options.colors?.lighterGray || "#E8ECED",
+		tableHeader: options.colors?.tableHeader || "#D1D9DC",
 	};
 
 	const locale = options.locale || "it";

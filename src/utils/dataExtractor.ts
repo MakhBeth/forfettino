@@ -1,4 +1,3 @@
-import { oc } from "ts-optchain";
 import type {
 	Line,
 	Invoice,
@@ -22,42 +21,39 @@ const generateLine = (line: DettaglioLinee): Line => ({
 });
 
 const generateCompany = (company: Azienda): Company => {
-	const ocCompany = oc(company);
 	const result: Company = {
-		vat: ocCompany.DatiAnagrafici.IdFiscaleIVA.IdCodice(""),
-		name: ocCompany.DatiAnagrafici.Anagrafica.Denominazione(),
+		vat: company?.DatiAnagrafici?.IdFiscaleIVA?.IdCodice || "",
+		name: company?.DatiAnagrafici?.Anagrafica?.Denominazione,
 	};
 
-	if (ocCompany.Contatti()) {
+	if (company?.Contatti) {
 		result.contacts = {};
-		result.contacts.tel = ocCompany.Contatti.Telefono();
-		result.contacts.email = ocCompany.Contatti.Email();
+		result.contacts.tel = company.Contatti.Telefono;
+		result.contacts.email = company.Contatti.Email;
 	}
 
-	if (ocCompany.Sede()) {
+	if (company?.Sede) {
 		result.office = {};
-		result.office.address = ocCompany.Sede.Indirizzo();
-		result.office.number = ocCompany.Sede.NumeroCivico();
-		result.office.cap = ocCompany.Sede.CAP();
-		result.office.city = ocCompany.Sede.Comune();
-		result.office.district = ocCompany.Sede.Provincia();
-		result.office.country = ocCompany.Sede.Nazione();
+		result.office.address = company.Sede.Indirizzo;
+		result.office.number = company.Sede.NumeroCivico;
+		result.office.cap = company.Sede.CAP;
+		result.office.city = company.Sede.Comune;
+		result.office.district = company.Sede.Provincia;
+		result.office.country = company.Sede.Nazione;
 	}
 
 	return result;
 };
 
 export default function dataExtractor(json: InvoiceJSON): Invoice {
-	const invoice = oc(json).FatturaElettronica;
-
 	const body: FatturaElettronicaBody[] = Array.isArray(
 		json.FatturaElettronica.FatturaElettronicaBody,
 	)
 		? json.FatturaElettronica.FatturaElettronicaBody
 		: [json.FatturaElettronica.FatturaElettronicaBody];
 
-	const header = invoice.FatturaElettronicaHeader;
-	const thirdParty = header.TerzoIntermediarioOSoggettoEmittente();
+	const header = json.FatturaElettronica.FatturaElettronicaHeader;
+	const thirdParty = header.TerzoIntermediarioOSoggettoEmittente;
 
 	const result: Invoice = {
 		invoicer: generateCompany(
@@ -68,33 +64,32 @@ export default function dataExtractor(json: InvoiceJSON): Invoice {
 		),
 		installments: body.map(
 			(installmentJson: FatturaElettronicaBody): Installment => {
-				const installment = oc(installmentJson);
-				const attachments = installment.Allegati();
-				const payment = installment.DatiPagamento.DettaglioPagamento;
-				const taxSummary = installment.DatiBeniServizi.DatiRiepilogo;
-				const lines = installment.DatiBeniServizi.DettaglioLinee([]);
-				const generalData = installment.DatiGenerali.DatiGeneraliDocumento;
-				const datiBollo = generalData.DatiBollo();
+				const attachments = installmentJson.Allegati;
+				const payment = installmentJson.DatiPagamento?.DettaglioPagamento;
+				const taxSummary = installmentJson.DatiBeniServizi?.DatiRiepilogo;
+				const lines = installmentJson.DatiBeniServizi?.DettaglioLinee || [];
+				const generalData = installmentJson.DatiGenerali?.DatiGeneraliDocumento;
+				const datiBollo = generalData?.DatiBollo;
 
 				const returnedInstallment: Installment = {
-					number: generalData.Numero("Numero non presente"),
-					currency: generalData.Divisa("EUR"),
+					number: generalData?.Numero || "Numero non presente",
+					currency: generalData?.Divisa || "EUR",
 					totalAmount:
-						generalData.ImportoTotaleDocumento() || payment.ImportoPagamento(0),
-					issueDate: new Date(generalData.Data(new Date())),
-					description: generalData.Causale(),
+						generalData?.ImportoTotaleDocumento || payment?.ImportoPagamento || 0,
+					issueDate: new Date(generalData?.Data || new Date()),
+					description: generalData?.Causale,
 					lines: Array.isArray(lines)
 						? lines.map((line) => generateLine(line))
 						: [lines].map((line) => generateLine(line)),
 					taxSummary: {
-						taxPercentage: taxSummary.AliquotaIVA(0),
-						taxAmount: taxSummary.Imposta(0),
-						paymentAmount: taxSummary.ImponibileImporto(0),
-						legalRef: taxSummary.RiferimentoNormativo(),
+						taxPercentage: taxSummary?.AliquotaIVA || 0,
+						taxAmount: taxSummary?.Imposta || 0,
+						paymentAmount: taxSummary?.ImponibileImporto || 0,
+						legalRef: taxSummary?.RiferimentoNormativo,
 					},
 				};
 
-				if (datiBollo && datiBollo.ImportoBollo) {
+				if (datiBollo?.ImportoBollo) {
 					returnedInstallment.stampDuty = datiBollo.ImportoBollo;
 				}
 
@@ -111,15 +106,15 @@ export default function dataExtractor(json: InvoiceJSON): Invoice {
 								},
 							];
 				}
-				if (payment()) {
-					const paymentDate = payment.DataScadenzaPagamento("");
+				if (payment) {
+					const paymentDate = payment.DataScadenzaPagamento;
 					returnedInstallment.payment = {
-						amount: payment.ImportoPagamento(0),
-						iban: payment.IBAN("Iban Mancante"),
-						method: payment.ModalitaPagamento(),
-						bank: payment.IstitutoFinanziario(),
+						amount: payment.ImportoPagamento || 0,
+						iban: payment.IBAN || "Iban Mancante",
+						method: payment.ModalitaPagamento,
+						bank: payment.IstitutoFinanziario,
 						regularPaymentDate: paymentDate && paymentDate.length > 0 ? new Date(paymentDate) : undefined,
-						type: payment.ModalitaPagamento(),
+						type: payment.ModalitaPagamento,
 					};
 				}
 				return returnedInstallment;
