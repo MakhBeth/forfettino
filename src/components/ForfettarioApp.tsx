@@ -1,11 +1,14 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit, Github, FileArchive } from 'lucide-react';
+import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit, Github, FileArchive, FileCheck } from 'lucide-react';
 import { unzipSync } from 'fflate';
+import FatturaDiCortesia from './FatturaDiCortesia';
+import { generateInvoicePDF } from '../utils/pdfGenerator';
+import { FatturaSettings, DEFAULT_FATTURA_SETTINGS } from '../types/Invoice';
 
 // Type definitions
-type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs';
+type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs' | 'fatturaSettings';
 
 interface Cliente {
   id: string;
@@ -59,8 +62,8 @@ interface Toast {
 // IndexedDB Manager
 // ============================================
 const DB_NAME = 'ForfettarioDB';
-const DB_VERSION = 1;
-const STORES: StoreName[] = ['config', 'clienti', 'fatture', 'workLogs'];
+const DB_VERSION = 2;
+const STORES: StoreName[] = ['config', 'clienti', 'fatture', 'workLogs', 'fatturaSettings'];
 
 class IndexedDBManager {
   db: IDBDatabase | null;
@@ -92,6 +95,9 @@ class IndexedDBManager {
         }
         if (!db.objectStoreNames.contains('workLogs')) {
           db.createObjectStore('workLogs', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('fatturaSettings')) {
+          db.createObjectStore('fatturaSettings', { keyPath: 'id' });
         }
       };
     });
@@ -750,6 +756,8 @@ export default function ForfettarioApp(): JSX.Element {
   const [filtroAnnoFatture, setFiltroAnnoFatture] = useState<string>('tutte');
   const [ordinamentoFatture, setOrdinamentoFatture] = useState<{ campo: string; direzione: string }>({ campo: 'dataIncasso', direzione: 'desc' });
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+  const [generatePDF, setGeneratePDF] = useState<boolean>(false);
+  const [fatturaSettings, setFatturaSettings] = useState<FatturaSettings>(DEFAULT_FATTURA_SETTINGS);
   
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -764,15 +772,17 @@ export default function ForfettarioApp(): JSX.Element {
         const savedConfig = await dbManager.get('config', 'main');
         if (savedConfig) setConfig(savedConfig);
         
-        const [savedClienti, savedFatture, savedWorkLogs] = await Promise.all([
+        const [savedClienti, savedFatture, savedWorkLogs, savedFatturaSettings] = await Promise.all([
           dbManager.getAll('clienti'),
           dbManager.getAll('fatture'),
-          dbManager.getAll('workLogs')
+          dbManager.getAll('workLogs'),
+          dbManager.get('fatturaSettings', 'main')
         ]);
         
         setClienti(savedClienti || []);
         setFatture(savedFatture || []);
         setWorkLogs(savedWorkLogs || []);
+        if (savedFatturaSettings) setFatturaSettings(savedFatturaSettings);
         setDbReady(true);
       } catch (error) {
         console.error('Errore DB:', error);
@@ -938,11 +948,14 @@ export default function ForfettarioApp(): JSX.Element {
       const parsed = parseFatturaXML(event.target.result);
       if (parsed) {
         let clienteId = clienti.find(c => c.piva === parsed.clientePiva)?.id;
+        let cliente = clienti.find(c => c.id === clienteId);
+        
         if (!clienteId && parsed.clienteNome) {
           const nuovoCliente = { id: Date.now().toString(), nome: parsed.clienteNome, piva: parsed.clientePiva, email: '' };
           await dbManager.put('clienti', nuovoCliente);
           setClienti([...clienti, nuovoCliente]);
           clienteId = nuovoCliente.id;
+          cliente = nuovoCliente;
         }
         
         const duplicateKey = computeDuplicateKey(parsed.numero, parsed.data, parsed.importo);
@@ -958,8 +971,22 @@ export default function ForfettarioApp(): JSX.Element {
         };
         await dbManager.put('fatture', nuovaFattura);
         setFatture([...fatture, nuovaFattura]);
+        
+        // Generate PDF if checkbox is checked
+        if (generatePDF && cliente) {
+          try {
+            await generateInvoicePDF(nuovaFattura, cliente, config, fatturaSettings);
+            showToast('Fattura caricata e PDF generato!');
+          } catch (error) {
+            showToast('Fattura caricata, ma errore generazione PDF', 'error');
+            console.error('PDF generation error:', error);
+          }
+        } else {
+          showToast('Fattura caricata!');
+        }
+        
         setShowModal(null);
-        showToast('Fattura caricata!');
+        setGeneratePDF(false); // Reset checkbox
       } else {
         showToast('Errore parsing XML', 'error');
       }
@@ -1208,6 +1235,9 @@ export default function ForfettarioApp(): JSX.Element {
             </div>
             <div className={`nav-item ${currentPage === 'calendario' ? 'active' : ''}`} onClick={() => setCurrentPage('calendario')}>
               <Calendar size={20} /> Calendario
+            </div>
+            <div className={`nav-item ${currentPage === 'fattura-cortesia' ? 'active' : ''}`} onClick={() => setCurrentPage('fattura-cortesia')}>
+              <FileCheck size={20} /> Fattura di Cortesia
             </div>
             <div className={`nav-item ${currentPage === 'impostazioni' ? 'active' : ''}`} onClick={() => setCurrentPage('impostazioni')}>
               <Settings size={20} /> Impostazioni
@@ -1691,6 +1721,11 @@ export default function ForfettarioApp(): JSX.Element {
             </>
           )}
           
+          {/* FATTURA DI CORTESIA */}
+          {currentPage === 'fattura-cortesia' && (
+            <FatturaDiCortesia dbManager={dbManager} showToast={showToast} />
+          )}
+          
           {/* IMPOSTAZIONI */}
           {currentPage === 'impostazioni' && (
             <>
@@ -1829,6 +1864,22 @@ export default function ForfettarioApp(): JSX.Element {
                 <p style={{ fontWeight: 500 }}>Clicca per caricare</p>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 8 }}>Formato: FatturaPA XML</p>
               </label>
+              <div style={{ marginTop: 20, padding: 16, background: 'var(--bg-secondary)', borderRadius: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={generatePDF}
+                    onChange={(e) => setGeneratePDF(e.target.checked)}
+                    style={{ width: 18, height: 18, cursor: 'pointer' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 500, marginBottom: 4 }}>☑ Genera fattura di cortesia (PDF)</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Scarica automaticamente un PDF della fattura
+                    </div>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
         )}
