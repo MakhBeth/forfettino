@@ -4,6 +4,9 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveCo
 import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit, Github, FileArchive } from 'lucide-react';
 import { unzipSync } from 'fflate';
 import FatturaDiCortesia from './FatturaDiCortesia';
+import { generatePDFFromXML, downloadPDF, generateFilename } from '../utils/pdfGenerator';
+import type { FatturaSettings } from '../types/FatturaSettings';
+import { DEFAULT_FATTURA_SETTINGS } from '../types/FatturaSettings';
 
 // Type definitions
 type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs' | 'fatturaSettings';
@@ -754,6 +757,8 @@ export default function ForfettarioApp(): JSX.Element {
   const [filtroAnnoFatture, setFiltroAnnoFatture] = useState<string>('tutte');
   const [ordinamentoFatture, setOrdinamentoFatture] = useState<{ campo: string; direzione: string }>({ campo: 'dataIncasso', direzione: 'desc' });
   const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
+  const [generatePDFOnUpload, setGeneratePDFOnUpload] = useState<boolean>(false);
+  const [pdfLanguageOnUpload, setPdfLanguageOnUpload] = useState<'it' | 'de' | 'en' | 'es'>('it');
   
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -939,7 +944,8 @@ export default function ForfettarioApp(): JSX.Element {
     
     const reader = new FileReader();
     reader.onload = async (event) => {
-      const parsed = parseFatturaXML(event.target.result);
+      const xmlContent = event.target.result;
+      const parsed = parseFatturaXML(xmlContent);
       if (parsed) {
         let clienteId = clienti.find(c => c.piva === parsed.clientePiva)?.id;
         if (!clienteId && parsed.clienteNome) {
@@ -962,8 +968,25 @@ export default function ForfettarioApp(): JSX.Element {
         };
         await dbManager.put('fatture', nuovaFattura);
         setFatture([...fatture, nuovaFattura]);
+        
+        // Generate PDF if checkbox is checked
+        if (generatePDFOnUpload) {
+          try {
+            const settings = await dbManager.get('fatturaSettings', 'main') || DEFAULT_FATTURA_SETTINGS;
+            const pdfBlob = await generatePDFFromXML(xmlContent, settings, pdfLanguageOnUpload);
+            const filename = generateFilename(parsed.numero, parsed.data);
+            downloadPDF(pdfBlob, filename);
+            showToast('Fattura caricata e PDF generato!');
+          } catch (error) {
+            console.error('Error generating PDF:', error);
+            showToast('Fattura caricata, ma errore nella generazione del PDF', 'error');
+          }
+        } else {
+          showToast('Fattura caricata!');
+        }
+        
         setShowModal(null);
-        showToast('Fattura caricata!');
+        setGeneratePDFOnUpload(false); // Reset checkbox
       } else {
         showToast('Errore parsing XML', 'error');
       }
@@ -1841,6 +1864,44 @@ export default function ForfettarioApp(): JSX.Element {
                 <p style={{ fontWeight: 500 }}>Clicca per caricare</p>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 8 }}>Formato: FatturaPA XML</p>
               </label>
+              
+              {/* PDF Generation Option */}
+              <div style={{ 
+                marginTop: '24px', 
+                padding: '16px', 
+                backgroundColor: 'var(--bg-hover)', 
+                borderRadius: '8px',
+                border: '1px solid var(--border)'
+              }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={generatePDFOnUpload}
+                      onChange={(e) => setGeneratePDFOnUpload(e.target.checked)}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <span style={{ fontSize: '0.95rem', fontWeight: 500 }}>Genera fattura di cortesia (PDF)</span>
+                  </label>
+                </div>
+                
+                {generatePDFOnUpload && (
+                  <div className="input-group" style={{ marginTop: '12px', marginBottom: 0 }}>
+                    <label className="input-label" style={{ fontSize: '0.85rem' }}>Lingua</label>
+                    <select
+                      value={pdfLanguageOnUpload}
+                      onChange={(e) => setPdfLanguageOnUpload(e.target.value as 'it' | 'de' | 'en' | 'es')}
+                      className="input-field"
+                      style={{ maxWidth: '200px' }}
+                    >
+                      <option value="it">Italiano</option>
+                      <option value="de">Deutsch</option>
+                      <option value="en">English</option>
+                      <option value="es">Español</option>
+                    </select>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
