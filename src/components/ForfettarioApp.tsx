@@ -1,7 +1,8 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit, Github } from 'lucide-react';
+import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit, Github, FileArchive } from 'lucide-react';
+import { unzipSync } from 'fflate';
 
 // Type definitions
 type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs';
@@ -21,6 +22,7 @@ interface Fattura {
   data: string;
   dataIncasso?: string;
   importo: number;
+  duplicateKey?: string;
 }
 
 interface WorkLog {
@@ -547,6 +549,60 @@ const DEFAULT_CONFIG: Config = {
   aliquotaOverride: null
 };
 
+// ============================================
+// Utility Functions for Batch Import
+// ============================================
+
+interface ImportSummary {
+  total: number;
+  imported: number;
+  duplicates: number;
+  failed: number;
+  failedFiles: Array<{ filename: string; error: string }>;
+}
+
+// Compute duplicate key: normalize invoice number + date + amount
+const computeDuplicateKey = (numero: string | undefined, data: string, importo: number): string => {
+  const normalizedNumero = (numero || '').trim();
+  const normalizedData = new Date(data).toISOString().split('T')[0]; // yyyy-mm-dd
+  const normalizedImporto = importo.toFixed(2);
+  return `${normalizedNumero}|${normalizedData}|${normalizedImporto}`;
+};
+
+// Get duplicate key for existing fattura (compute on-the-fly if missing for backward compatibility)
+const getDuplicateKey = (fattura: Fattura): string => {
+  if (fattura.duplicateKey) return fattura.duplicateKey;
+  return computeDuplicateKey(fattura.numero, fattura.data, fattura.importo);
+};
+
+// Extract XML files from ZIP
+const extractXmlFromZip = async (zipFile: File): Promise<Array<{ name: string; content: string }>> => {
+  try {
+    const arrayBuffer = await zipFile.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    const unzipped = unzipSync(uint8Array);
+    
+    const xmlFiles: Array<{ name: string; content: string }> = [];
+    
+    for (const [filename, data] of Object.entries(unzipped)) {
+      // Skip directories, __MACOSX, and non-XML files
+      if (filename.endsWith('/') || filename.includes('__MACOSX') || filename.startsWith('.')) {
+        continue;
+      }
+      
+      if (filename.toLowerCase().endsWith('.xml')) {
+        const decoder = new TextDecoder('utf-8');
+        const content = decoder.decode(data);
+        xmlFiles.push({ name: filename, content });
+      }
+    }
+    
+    return xmlFiles;
+  } catch (error) {
+    throw new Error('Errore estrazione ZIP: ' + error.message);
+  }
+};
+
 export default function ForfettarioApp(): JSX.Element {
   const [currentPage, setCurrentPage] = useState<string>('dashboard');
   const [showModal, setShowModal] = useState<string | null>(null);
@@ -567,6 +623,7 @@ export default function ForfettarioApp(): JSX.Element {
   const [editingFattura, setEditingFattura] = useState<Fattura | null>(null);
   const [filtroAnnoFatture, setFiltroAnnoFatture] = useState<string>('tutte');
   const [ordinamentoFatture, setOrdinamentoFatture] = useState<{ campo: string; direzione: string }>({ campo: 'dataIncasso', direzione: 'desc' });
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
   
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -731,7 +788,17 @@ export default function ForfettarioApp(): JSX.Element {
           clienteId = nuovoCliente.id;
         }
         
-        const nuovaFattura = { id: Date.now().toString(), numero: parsed.numero, importo: parsed.importo, data: parsed.data, dataIncasso: parsed.dataIncasso, clienteId, clienteNome: parsed.clienteNome };
+        const duplicateKey = computeDuplicateKey(parsed.numero, parsed.data, parsed.importo);
+        const nuovaFattura = { 
+          id: Date.now().toString(), 
+          numero: parsed.numero, 
+          importo: parsed.importo, 
+          data: parsed.data, 
+          dataIncasso: parsed.dataIncasso, 
+          clienteId, 
+          clienteNome: parsed.clienteNome,
+          duplicateKey
+        };
         await dbManager.put('fatture', nuovaFattura);
         setFatture([...fatture, nuovaFattura]);
         setShowModal(null);
@@ -741,6 +808,205 @@ export default function ForfettarioApp(): JSX.Element {
       }
     };
     reader.readAsText(file);
+  };
+  
+  // Batch import handler for multiple XML files
+  const handleBatchFatturaUpload = async (files: FileList) => {
+    const summary: ImportSummary = {
+      total: files.length,
+      imported: 0,
+      duplicates: 0,
+      failed: 0,
+      failedFiles: []
+    };
+    
+    const newFatture: Fattura[] = [];
+    const newClienti: Cliente[] = [];
+    const existingDuplicateKeys = new Set(fatture.map(f => getDuplicateKey(f)));
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const text = await file.text();
+        const parsed = parseFatturaXML(text);
+        
+        if (!parsed) {
+          summary.failed++;
+          summary.failedFiles.push({ filename: file.name, error: 'Errore parsing XML' });
+          continue;
+        }
+        
+        // Check for duplicate
+        const duplicateKey = computeDuplicateKey(parsed.numero, parsed.data, parsed.importo);
+        if (existingDuplicateKeys.has(duplicateKey)) {
+          summary.duplicates++;
+          continue;
+        }
+        
+        // Mark as processed to avoid duplicates within the batch
+        existingDuplicateKeys.add(duplicateKey);
+        
+        // Find or create cliente
+        let clienteId = clienti.find(c => c.piva === parsed.clientePiva)?.id;
+        if (!clienteId) {
+          clienteId = newClienti.find(c => c.piva === parsed.clientePiva)?.id;
+        }
+        
+        if (!clienteId && parsed.clienteNome) {
+          const nuovoCliente = { 
+            id: `${Date.now()}-${i}`, 
+            nome: parsed.clienteNome, 
+            piva: parsed.clientePiva, 
+            email: '' 
+          };
+          newClienti.push(nuovoCliente);
+          clienteId = nuovoCliente.id;
+        }
+        
+        const nuovaFattura: Fattura = { 
+          id: `${Date.now()}-${i}`, 
+          numero: parsed.numero, 
+          importo: parsed.importo, 
+          data: parsed.data, 
+          dataIncasso: parsed.dataIncasso, 
+          clienteId: clienteId || '', 
+          clienteNome: parsed.clienteNome,
+          duplicateKey
+        };
+        
+        newFatture.push(nuovaFattura);
+        summary.imported++;
+      } catch (error) {
+        summary.failed++;
+        summary.failedFiles.push({ filename: file.name, error: error.message || 'Errore sconosciuto' });
+      }
+    }
+    
+    // Save all new clienti and fatture
+    for (const cliente of newClienti) {
+      await dbManager.put('clienti', cliente);
+    }
+    for (const fattura of newFatture) {
+      await dbManager.put('fatture', fattura);
+    }
+    
+    // Update state
+    if (newClienti.length > 0) {
+      setClienti([...clienti, ...newClienti]);
+    }
+    if (newFatture.length > 0) {
+      setFatture([...fatture, ...newFatture]);
+    }
+    
+    // Show summary
+    setImportSummary(summary);
+    setShowModal('import-summary');
+  };
+  
+  // ZIP import handler
+  const handleZipUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    try {
+      const xmlFiles = await extractXmlFromZip(file);
+      
+      if (xmlFiles.length === 0) {
+        showToast('Nessun file XML trovato nel ZIP', 'error');
+        return;
+      }
+      
+      const summary: ImportSummary = {
+        total: xmlFiles.length,
+        imported: 0,
+        duplicates: 0,
+        failed: 0,
+        failedFiles: []
+      };
+      
+      const newFatture: Fattura[] = [];
+      const newClienti: Cliente[] = [];
+      const existingDuplicateKeys = new Set(fatture.map(f => getDuplicateKey(f)));
+      
+      for (let i = 0; i < xmlFiles.length; i++) {
+        const { name, content } = xmlFiles[i];
+        try {
+          const parsed = parseFatturaXML(content);
+          
+          if (!parsed) {
+            summary.failed++;
+            summary.failedFiles.push({ filename: name, error: 'Errore parsing XML' });
+            continue;
+          }
+          
+          // Check for duplicate
+          const duplicateKey = computeDuplicateKey(parsed.numero, parsed.data, parsed.importo);
+          if (existingDuplicateKeys.has(duplicateKey)) {
+            summary.duplicates++;
+            continue;
+          }
+          
+          // Mark as processed to avoid duplicates within the batch
+          existingDuplicateKeys.add(duplicateKey);
+          
+          // Find or create cliente
+          let clienteId = clienti.find(c => c.piva === parsed.clientePiva)?.id;
+          if (!clienteId) {
+            clienteId = newClienti.find(c => c.piva === parsed.clientePiva)?.id;
+          }
+          
+          if (!clienteId && parsed.clienteNome) {
+            const nuovoCliente = { 
+              id: `${Date.now()}-${i}`, 
+              nome: parsed.clienteNome, 
+              piva: parsed.clientePiva, 
+              email: '' 
+            };
+            newClienti.push(nuovoCliente);
+            clienteId = nuovoCliente.id;
+          }
+          
+          const nuovaFattura: Fattura = { 
+            id: `${Date.now()}-${i}`, 
+            numero: parsed.numero, 
+            importo: parsed.importo, 
+            data: parsed.data, 
+            dataIncasso: parsed.dataIncasso, 
+            clienteId: clienteId || '', 
+            clienteNome: parsed.clienteNome,
+            duplicateKey
+          };
+          
+          newFatture.push(nuovaFattura);
+          summary.imported++;
+        } catch (error) {
+          summary.failed++;
+          summary.failedFiles.push({ filename: name, error: error.message || 'Errore sconosciuto' });
+        }
+      }
+      
+      // Save all new clienti and fatture
+      for (const cliente of newClienti) {
+        await dbManager.put('clienti', cliente);
+      }
+      for (const fattura of newFatture) {
+        await dbManager.put('fatture', fattura);
+      }
+      
+      // Update state
+      if (newClienti.length > 0) {
+        setClienti([...clienti, ...newClienti]);
+      }
+      if (newFatture.length > 0) {
+        setFatture([...fatture, ...newFatture]);
+      }
+      
+      // Show summary
+      setImportSummary(summary);
+      setShowModal('import-summary');
+    } catch (error) {
+      showToast(error.message || 'Errore caricamento ZIP', 'error');
+    }
   };
   
   const addCliente = async () => {
@@ -1127,6 +1393,12 @@ export default function ForfettarioApp(): JSX.Element {
                   </select>
                   <button className="btn btn-primary" onClick={() => setShowModal('upload-fattura')}>
                     <Upload size={18} /> Carica XML
+                  </button>
+                  <button className="btn btn-primary" onClick={() => setShowModal('batch-upload-fattura')}>
+                    <FileText size={18} /> Batch Import
+                  </button>
+                  <button className="btn btn-primary" onClick={() => setShowModal('upload-zip')}>
+                    <FileArchive size={18} /> Carica ZIP
                   </button>
                 </div>
               </div>
@@ -1556,6 +1828,119 @@ export default function ForfettarioApp(): JSX.Element {
               </div>
               <button className="btn btn-primary" style={{ width: '100%' }} onClick={updateDataIncasso}>
                 <Check size={18} /> Salva
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {showModal === 'batch-upload-fattura' && (
+          <div className="modal-overlay" onClick={() => setShowModal(null)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Importa File XML Multipli</h3>
+                <button className="close-btn" onClick={() => setShowModal(null)}><X size={20} /></button>
+              </div>
+              <label className="upload-zone">
+                <input 
+                  type="file" 
+                  accept=".xml" 
+                  multiple 
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleBatchFatturaUpload(e.target.files);
+                    }
+                  }} 
+                  style={{ display: 'none' }} 
+                />
+                <FileText size={40} style={{ marginBottom: 16, color: 'var(--accent-primary)' }} />
+                <p style={{ fontWeight: 500 }}>Clicca per selezionare file XML multipli</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 8 }}>
+                  Puoi selezionare più file XML contemporaneamente
+                </p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  I duplicati (stesso numero, data e importo) saranno saltati
+                </p>
+              </label>
+            </div>
+          </div>
+        )}
+        
+        {showModal === 'upload-zip' && (
+          <div className="modal-overlay" onClick={() => setShowModal(null)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Carica File ZIP</h3>
+                <button className="close-btn" onClick={() => setShowModal(null)}><X size={20} /></button>
+              </div>
+              <label className="upload-zone">
+                <input 
+                  type="file" 
+                  accept=".zip" 
+                  onChange={handleZipUpload} 
+                  style={{ display: 'none' }} 
+                />
+                <FileArchive size={40} style={{ marginBottom: 16, color: 'var(--accent-primary)' }} />
+                <p style={{ fontWeight: 500 }}>Clicca per caricare un file ZIP</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 8 }}>
+                  Il file ZIP verrà estratto e tutti gli XML saranno importati
+                </p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  I duplicati (stesso numero, data e importo) saranno saltati
+                </p>
+              </label>
+            </div>
+          </div>
+        )}
+        
+        {showModal === 'import-summary' && importSummary && (
+          <div className="modal-overlay" onClick={() => setShowModal(null)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Riepilogo Importazione</h3>
+                <button className="close-btn" onClick={() => setShowModal(null)}><X size={20} /></button>
+              </div>
+              
+              <div className="grid-2" style={{ marginBottom: 20 }}>
+                <div style={{ padding: 16, background: 'var(--bg-secondary)', borderRadius: 12, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>File Processati</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-primary)' }}>{importSummary.total}</div>
+                </div>
+                
+                <div style={{ padding: 16, background: 'var(--bg-secondary)', borderRadius: 12, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>Importate</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-green)' }}>{importSummary.imported}</div>
+                </div>
+                
+                <div style={{ padding: 16, background: 'var(--bg-secondary)', borderRadius: 12, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>Duplicati Saltati</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-orange)' }}>{importSummary.duplicates}</div>
+                </div>
+                
+                <div style={{ padding: 16, background: 'var(--bg-secondary)', borderRadius: 12, textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>Errori</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent-red)' }}>{importSummary.failed}</div>
+                </div>
+              </div>
+              
+              {importSummary.failedFiles.length > 0 && (
+                <div style={{ padding: 16, background: 'rgba(239, 68, 68, 0.1)', borderRadius: 12, marginBottom: 20 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 12, color: 'var(--accent-red)' }}>
+                    <AlertTriangle size={16} style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />
+                    File con errori:
+                  </div>
+                  <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                    {importSummary.failedFiles.map((file, i) => (
+                      <div key={i} style={{ fontSize: '0.85rem', marginBottom: 8, paddingBottom: 8, borderBottom: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{file.filename}</div>
+                        <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{file.error}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowModal(null)}>
+                <Check size={18} /> Chiudi
               </button>
             </div>
           </div>
