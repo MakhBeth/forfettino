@@ -112,12 +112,13 @@ export default function dataExtractor(json: InvoiceJSON): Invoice {
 							];
 				}
 				if (payment()) {
+					const paymentDate = payment.DataScadenzaPagamento("");
 					returnedInstallment.payment = {
 						amount: payment.ImportoPagamento(0),
 						iban: payment.IBAN("Iban Mancante"),
 						method: payment.ModalitaPagamento(),
 						bank: payment.IstitutoFinanziario(),
-						regularPaymentDate: payment.DataScadenzaPagamento("") ? new Date(payment.DataScadenzaPagamento("")) : undefined,
+						regularPaymentDate: paymentDate && paymentDate.length > 0 ? new Date(paymentDate) : undefined,
 						type: payment.ModalitaPagamento(),
 					};
 				}
