@@ -533,6 +533,7 @@ const INPS_GESTIONE_SEPARATA = 0.2607;
 const ALIQUOTA_RIDOTTA = 0.05;
 const ALIQUOTA_STANDARD = 0.15;
 const MAX_HISTORICAL_YEARS = 10;
+const HOURS_PER_DAY = 8;
 
 const COEFFICIENTI_ATECO = {
   '62': 67, '63': 67, '70': 78, '71': 78, '72': 67,
@@ -692,7 +693,7 @@ export default function ForfettarioApp(): JSX.Element {
   
   const orePerCliente = clienti.map(cliente => {
     const logs = workLogs.filter(w => w.clienteId === cliente.id);
-    return { ...cliente, totaleOre: logs.reduce((sum, w) => sum + (w.tipo === 'giornata' ? 8 : parseFloat(w.ore)), 0) };
+    return { ...cliente, totaleOre: logs.reduce((sum, w) => sum + (w.tipo === 'giornata' ? HOURS_PER_DAY : parseFloat(w.ore)), 0) };
   }).filter(c => c.totaleOre > 0).sort((a, b) => b.totaleOre - a.totaleOre);
   
   // Parse XML
@@ -931,7 +932,7 @@ export default function ForfettarioApp(): JSX.Element {
         });
       } else {
         // Sum hours
-        const hours = log.tipo === 'giornata' ? 8 : parseFloat(log.ore || '0');
+        const hours = log.tipo === 'giornata' ? HOURS_PER_DAY : parseFloat(log.ore || '0');
         const quantity = existing ? existing.quantity + hours : hours;
         recapByClient.set(log.clienteId, {
           clienteId: log.clienteId,
@@ -1291,7 +1292,7 @@ export default function ForfettarioApp(): JSX.Element {
                     
                     // Calculate total hours for the day
                     const totalHours = dayLogs.reduce((sum, log) => {
-                      return sum + (log.tipo === 'giornata' ? 8 : parseFloat(log.ore || 0));
+                      return sum + (log.tipo === 'giornata' ? HOURS_PER_DAY : parseFloat(log.ore || 0));
                     }, 0);
                     
                     // Get primary client for preview (client with most hours)
@@ -1300,7 +1301,7 @@ export default function ForfettarioApp(): JSX.Element {
                     if (hasWork) {
                       const clientHours = {};
                       dayLogs.forEach(log => {
-                        const hours = log.tipo === 'giornata' ? 8 : parseFloat(log.ore || 0);
+                        const hours = log.tipo === 'giornata' ? HOURS_PER_DAY : parseFloat(log.ore || 0);
                         clientHours[log.clienteId] = (clientHours[log.clienteId] || 0) + hours;
                       });
                       primaryClientId = Object.keys(clientHours).reduce((a, b) => 
@@ -1630,7 +1631,7 @@ export default function ForfettarioApp(): JSX.Element {
                     ...newWorkLog, 
                     clienteId: e.target.value,
                     tipo: billingUnit,
-                    ore: billingUnit === 'giornata' ? '8' : ''
+                    ore: billingUnit === 'giornata' ? HOURS_PER_DAY.toString() : ''
                   });
                 }}>
                   <option value="">Seleziona...</option>
@@ -1656,7 +1657,7 @@ export default function ForfettarioApp(): JSX.Element {
                         <button 
                           className={`btn ${newWorkLog.tipo === 'giornata' ? 'btn-primary' : 'btn-secondary'}`} 
                           style={{ flex: 1 }} 
-                          onClick={() => setNewWorkLog({ ...newWorkLog, tipo: 'giornata', ore: '8' })}
+                          onClick={() => setNewWorkLog({ ...newWorkLog, tipo: 'giornata', ore: HOURS_PER_DAY.toString() })}
                           disabled={billingUnit !== 'giornata'}
                         >
                           Giornata {billingUnit !== 'giornata' && '🔒'}
