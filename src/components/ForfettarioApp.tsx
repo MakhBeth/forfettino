@@ -11,6 +11,9 @@ interface Cliente {
   nome: string;
   piva?: string;
   email?: string;
+  billingUnit?: 'ore' | 'giornata';
+  rate?: number;
+  billingStartDate?: string; // YYYY-MM-DD
 }
 
 interface Fattura {
@@ -27,8 +30,9 @@ interface WorkLog {
   id: string;
   clienteId: string;
   data: string;
-  ore: string;
-  tipo: string;
+  ore?: string; // Legacy field, kept for backward compatibility
+  tipo: 'ore' | 'giornata';
+  quantita?: number; // Fractional quantity (hours or days)
   note?: string;
 }
 
@@ -562,8 +566,9 @@ export default function ForfettarioApp(): JSX.Element {
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
   
   const [newCliente, setNewCliente] = useState<Partial<Cliente>>({ nome: '', piva: '', email: '' });
+  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [newAteco, setNewAteco] = useState<string>('');
-  const [newWorkLog, setNewWorkLog] = useState<Partial<WorkLog>>({ clienteId: '', ore: '', tipo: 'ore', note: '' });
+  const [newWorkLog, setNewWorkLog] = useState<Partial<WorkLog>>({ clienteId: '', quantita: undefined, tipo: 'ore', note: '' });
   const [editingFattura, setEditingFattura] = useState<Fattura | null>(null);
   const [filtroAnnoFatture, setFiltroAnnoFatture] = useState<string>('tutte');
   const [ordinamentoFatture, setOrdinamentoFatture] = useState<{ campo: string; direzione: string }>({ campo: 'dataIncasso', direzione: 'desc' });
@@ -653,6 +658,37 @@ export default function ForfettarioApp(): JSX.Element {
     }
   };
   
+  // Helper function to get quantity from WorkLog with backward compatibility
+  const getWorkLogQuantita = (log: WorkLog): number => {
+    // If quantita is defined, use it
+    if (log.quantita !== undefined && log.quantita !== null) {
+      return log.quantita;
+    }
+    // Backward compatibility: derive from ore or tipo
+    if (log.tipo === 'giornata') {
+      return 1;
+    }
+    if (log.tipo === 'ore' && log.ore) {
+      return parseFloat(log.ore) || 0;
+    }
+    return 0;
+  };
+  
+  // Generate stable color for client
+  const getClientColor = (clientId) => {
+    const colors = [
+      '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', 
+      '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#10b981',
+      '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#a855f7'
+    ];
+    // Simple hash function to generate consistent index
+    let hash = 0;
+    for (let i = 0; i < clientId.length; i++) {
+      hash = clientId.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+  
   // Calcoli
   const annoCorrente = new Date().getFullYear();
   const anniAttivita = annoCorrente - config.annoApertura;
@@ -690,7 +726,7 @@ export default function ForfettarioApp(): JSX.Element {
   
   const orePerCliente = clienti.map(cliente => {
     const logs = workLogs.filter(w => w.clienteId === cliente.id);
-    return { ...cliente, totaleOre: logs.reduce((sum, w) => sum + (w.tipo === 'giornata' ? 8 : parseFloat(w.ore)), 0) };
+    return { ...cliente, totaleOre: logs.reduce((sum, w) => sum + getWorkLogQuantita(w), 0) };
   }).filter(c => c.totaleOre > 0).sort((a, b) => b.totaleOre - a.totaleOre);
   
   // Parse XML
@@ -753,6 +789,15 @@ export default function ForfettarioApp(): JSX.Element {
     showToast('Cliente aggiunto!');
   };
   
+  const updateCliente = async () => {
+    if (!editingCliente || !editingCliente.nome) return;
+    await dbManager.put('clienti', editingCliente);
+    setClienti(clienti.map(c => c.id === editingCliente.id ? editingCliente : c));
+    setEditingCliente(null);
+    setShowModal(null);
+    showToast('Cliente aggiornato!');
+  };
+  
   const removeCliente = async (id) => {
     await dbManager.delete('clienti', id);
     setClienti(clienti.filter(c => c.id !== id));
@@ -775,11 +820,11 @@ export default function ForfettarioApp(): JSX.Element {
   };
   
   const addWorkLog = async () => {
-    if (!newWorkLog.clienteId || !newWorkLog.ore) return;
+    if (!newWorkLog.clienteId || newWorkLog.quantita === undefined || newWorkLog.quantita === null) return;
     const log = { ...newWorkLog, id: Date.now().toString(), data: selectedDate };
     await dbManager.put('workLogs', log);
     setWorkLogs([...workLogs, log]);
-    setNewWorkLog({ clienteId: '', ore: '', tipo: 'ore', note: '' });
+    setNewWorkLog({ clienteId: '', quantita: undefined, tipo: 'ore', note: '' });
     setShowModal(null);
     showToast('Attività registrata!');
   };
@@ -792,21 +837,6 @@ export default function ForfettarioApp(): JSX.Element {
     setEditingFattura(null);
     setShowModal(null);
     showToast('Data incasso aggiornata!');
-  };
-  
-  // Generate stable color for client
-  const getClientColor = (clientId) => {
-    const colors = [
-      '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316', 
-      '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#10b981',
-      '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#a855f7'
-    ];
-    // Simple hash function to generate consistent index
-    let hash = 0;
-    for (let i = 0; i < clientId.length; i++) {
-      hash = clientId.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return colors[Math.abs(hash) % colors.length];
   };
   
   // Calendario
@@ -1236,7 +1266,7 @@ export default function ForfettarioApp(): JSX.Element {
                     
                     // Calculate total hours for the day
                     const totalHours = dayLogs.reduce((sum, log) => {
-                      return sum + (log.tipo === 'giornata' ? 8 : parseFloat(log.ore || 0));
+                      return sum + getWorkLogQuantita(log);
                     }, 0);
                     
                     // Get primary client for preview (client with most hours)
@@ -1245,7 +1275,7 @@ export default function ForfettarioApp(): JSX.Element {
                     if (hasWork) {
                       const clientHours = {};
                       dayLogs.forEach(log => {
-                        const hours = log.tipo === 'giornata' ? 8 : parseFloat(log.ore || 0);
+                        const hours = getWorkLogQuantita(log);
                         clientHours[log.clienteId] = (clientHours[log.clienteId] || 0) + hours;
                       });
                       primaryClientId = Object.keys(clientHours).reduce((a, b) => 
@@ -1256,7 +1286,11 @@ export default function ForfettarioApp(): JSX.Element {
                         const clientName = primaryClient.nome.length > 15 
                           ? primaryClient.nome.substring(0, 12) + '...' 
                           : primaryClient.nome;
-                        previewText = `${clientName} — ${totalHours}h`;
+                        // Check if all logs are of the same type to display appropriate unit
+                        const allDays = dayLogs.every(l => l.tipo === 'giornata');
+                        const allHours = dayLogs.every(l => l.tipo === 'ore');
+                        const unit = allDays ? 'gg' : (allHours ? 'h' : 'h');
+                        previewText = `${clientName} — ${totalHours.toFixed(2)}${unit}`;
                       }
                     }
                     
@@ -1280,6 +1314,86 @@ export default function ForfettarioApp(): JSX.Element {
                 </div>
               </div>
               
+              {/* Monthly Recap Table */}
+              {(() => {
+                // Calculate recap data for each client
+                const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+                const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+                
+                const recapData = clienti
+                  .map(cliente => {
+                    // Filter logs for this client in the current month
+                    const clientLogs = workLogs.filter(log => {
+                      const logDate = new Date(log.data);
+                      const isInMonth = logDate >= monthStart && logDate <= monthEnd;
+                      
+                      // Check if log is after billingStartDate
+                      if (cliente.billingStartDate) {
+                        const billingStart = new Date(cliente.billingStartDate);
+                        return isInMonth && log.clienteId === cliente.id && logDate >= billingStart;
+                      }
+                      
+                      return isInMonth && log.clienteId === cliente.id;
+                    });
+                    
+                    if (clientLogs.length === 0) return null;
+                    
+                    // Sum quantities
+                    const totalQuantita = clientLogs.reduce((sum, log) => sum + getWorkLogQuantita(log), 0);
+                    
+                    // Calculate amount if rate is set
+                    const amount = cliente.rate ? totalQuantita * cliente.rate : null;
+                    
+                    return {
+                      cliente,
+                      totalQuantita,
+                      amount,
+                      unit: cliente.billingUnit || 'ore'
+                    };
+                  })
+                  .filter(item => item !== null);
+                
+                return recapData.length > 0 && (
+                  <div className="card">
+                    <div className="card-title">Riepilogo Mensile Fatturazione</div>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Cliente</th>
+                          <th>Quantità</th>
+                          <th>Tariffa</th>
+                          <th>Totale</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recapData.map(({ cliente, totalQuantita, amount, unit }) => (
+                          <tr key={cliente.id}>
+                            <td style={{ fontWeight: 500 }}>{cliente.nome}</td>
+                            <td>
+                              <span className="badge badge-green">
+                                {totalQuantita.toFixed(2)} {unit === 'ore' ? 'h' : 'gg'}
+                              </span>
+                            </td>
+                            <td style={{ fontFamily: 'Space Mono' }}>
+                              {cliente.rate ? `€${cliente.rate.toFixed(2)}/${unit === 'ore' ? 'h' : 'gg'}` : '-'}
+                            </td>
+                            <td style={{ fontFamily: 'Space Mono', fontWeight: 600, color: 'var(--accent-green)' }}>
+                              {amount !== null ? `€${amount.toFixed(2)}` : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                        <tr style={{ background: 'var(--bg-hover)', fontWeight: 600 }}>
+                          <td colSpan={3} style={{ textAlign: 'right' }}>Totale Mese</td>
+                          <td style={{ fontFamily: 'Space Mono', fontSize: '1.1rem', color: 'var(--accent-green)' }}>
+                            €{recapData.reduce((sum, item) => sum + (item.amount || 0), 0).toFixed(2)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+              
               {workLogs.filter(w => { const d = new Date(w.data); return d.getMonth() === currentMonth.getMonth() && d.getFullYear() === currentMonth.getFullYear(); }).length > 0 && (
                 <div className="card">
                   <div className="card-title">Attività del Mese</div>
@@ -1292,7 +1406,7 @@ export default function ForfettarioApp(): JSX.Element {
                           <tr key={log.id}>
                             <td>{new Date(log.data).toLocaleDateString('it-IT')}</td>
                             <td>{clienti.find(c => c.id === log.clienteId)?.nome || '-'}</td>
-                            <td><span className="badge badge-green">{log.tipo === 'giornata' ? '1 giornata (8h)' : `${log.ore} ore`}</span></td>
+                            <td><span className="badge badge-green">{log.tipo === 'giornata' ? `${getWorkLogQuantita(log)} giornata` : `${getWorkLogQuantita(log)} ore`}</span></td>
                             <td style={{ color: 'var(--text-secondary)' }}>{log.note || '-'}</td>
                             <td><button className="btn btn-danger" onClick={() => removeWorkLog(log.id)}><Trash2 size={16} /></button></td>
                           </tr>
@@ -1404,14 +1518,20 @@ export default function ForfettarioApp(): JSX.Element {
                 </div>
                 {clienti.length > 0 ? (
                   <table className="table" style={{ marginTop: 16 }}>
-                    <thead><tr><th>Nome</th><th>P.IVA</th><th>Email</th><th></th></tr></thead>
+                    <thead><tr><th>Nome</th><th>P.IVA</th><th>Email</th><th>Tariffa</th><th></th></tr></thead>
                     <tbody>
                       {clienti.map(c => (
                         <tr key={c.id}>
                           <td style={{ fontWeight: 500 }}>{c.nome}</td>
                           <td style={{ fontFamily: 'Space Mono' }}>{c.piva || '-'}</td>
                           <td>{c.email || '-'}</td>
-                          <td><button className="btn btn-danger" onClick={() => removeCliente(c.id)}><Trash2 size={16} /></button></td>
+                          <td>{c.rate && c.billingUnit ? `€${c.rate}/${c.billingUnit === 'ore' ? 'h' : 'gg'}` : '-'}</td>
+                          <td>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button className="btn btn-secondary btn-sm" onClick={() => { setEditingCliente({ ...c }); setShowModal('edit-cliente'); }}><Edit size={16} /></button>
+                              <button className="btn btn-danger" onClick={() => removeCliente(c.id)}><Trash2 size={16} /></button>
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1464,6 +1584,49 @@ export default function ForfettarioApp(): JSX.Element {
           </div>
         )}
         
+        {showModal === 'edit-cliente' && editingCliente && (
+          <div className="modal-overlay" onClick={() => setShowModal(null)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Modifica Cliente</h3>
+                <button className="close-btn" onClick={() => setShowModal(null)}><X size={20} /></button>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Nome *</label>
+                <input type="text" className="input-field" value={editingCliente.nome} onChange={(e) => setEditingCliente({ ...editingCliente, nome: e.target.value })} placeholder="Acme S.r.l." />
+              </div>
+              <div className="input-group">
+                <label className="input-label">P.IVA / CF</label>
+                <input type="text" className="input-field" value={editingCliente.piva || ''} onChange={(e) => setEditingCliente({ ...editingCliente, piva: e.target.value })} />
+              </div>
+              <div className="input-group">
+                <label className="input-label">Email</label>
+                <input type="email" className="input-field" value={editingCliente.email || ''} onChange={(e) => setEditingCliente({ ...editingCliente, email: e.target.value })} />
+              </div>
+              <div className="input-group">
+                <label className="input-label">Unità di Fatturazione</label>
+                <select className="input-field" value={editingCliente.billingUnit || ''} onChange={(e) => setEditingCliente({ ...editingCliente, billingUnit: e.target.value as 'ore' | 'giornata' })}>
+                  <option value="">Non specificato</option>
+                  <option value="ore">Ore</option>
+                  <option value="giornata">Giornata</option>
+                </select>
+              </div>
+              <div className="input-group">
+                <label className="input-label">Tariffa (€)</label>
+                <input type="number" className="input-field" value={editingCliente.rate || ''} onChange={(e) => setEditingCliente({ ...editingCliente, rate: parseFloat(e.target.value) || undefined })} placeholder="Es: 50" min="0" step="0.01" />
+              </div>
+              <div className="input-group">
+                <label className="input-label">Data Inizio Fatturazione</label>
+                <input type="date" className="input-field" value={editingCliente.billingStartDate || ''} onChange={(e) => setEditingCliente({ ...editingCliente, billingStartDate: e.target.value })} />
+                <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  💡 Il riepilogo mensile includerà solo le attività da questa data in poi
+                </div>
+              </div>
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={updateCliente}><Check size={18} /> Salva</button>
+            </div>
+          </div>
+        )}
+        
         {showModal === 'add-work' && (
           <div className="modal-overlay" onClick={() => setShowModal(null)}>
             <div className="modal" onClick={e => e.stopPropagation()}>
@@ -1479,29 +1642,52 @@ export default function ForfettarioApp(): JSX.Element {
               </div>
               <div className="input-group">
                 <label className="input-label">Cliente *</label>
-                <select className="input-field" value={newWorkLog.clienteId} onChange={(e) => setNewWorkLog({ ...newWorkLog, clienteId: e.target.value })}>
+                <select className="input-field" value={newWorkLog.clienteId} onChange={(e) => {
+                  const selectedCliente = clienti.find(c => c.id === e.target.value);
+                  const billingUnit = selectedCliente?.billingUnit || 'ore';
+                  const defaultQuantita = billingUnit === 'giornata' ? 1 : undefined;
+                  setNewWorkLog({ ...newWorkLog, clienteId: e.target.value, tipo: billingUnit, quantita: defaultQuantita });
+                }}>
                   <option value="">Seleziona...</option>
                   {clienti.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
               </div>
-              <div className="input-group">
-                <label className="input-label">Tipo</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button className={`btn ${newWorkLog.tipo === 'ore' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1 }} onClick={() => setNewWorkLog({ ...newWorkLog, tipo: 'ore', ore: '' })}>Ore</button>
-                  <button className={`btn ${newWorkLog.tipo === 'giornata' ? 'btn-primary' : 'btn-secondary'}`} style={{ flex: 1 }} onClick={() => setNewWorkLog({ ...newWorkLog, tipo: 'giornata', ore: '8' })}>Giornata</button>
-                </div>
-              </div>
-              {newWorkLog.tipo === 'ore' && (
-                <div className="input-group">
-                  <label className="input-label">Ore *</label>
-                  <input type="number" className="input-field" value={newWorkLog.ore} onChange={(e) => setNewWorkLog({ ...newWorkLog, ore: e.target.value })} min="0.5" max="24" step="0.5" />
-                </div>
-              )}
-              <div className="input-group">
-                <label className="input-label">Note</label>
-                <input type="text" className="input-field" value={newWorkLog.note} onChange={(e) => setNewWorkLog({ ...newWorkLog, note: e.target.value })} />
-              </div>
-              <button className="btn btn-primary" style={{ width: '100%' }} onClick={addWorkLog} disabled={!newWorkLog.clienteId || (!newWorkLog.ore && newWorkLog.tipo === 'ore')}><Check size={18} /> Registra</button>
+              {newWorkLog.clienteId && (() => {
+                const selectedCliente = clienti.find(c => c.id === newWorkLog.clienteId);
+                const billingUnit = selectedCliente?.billingUnit || 'ore';
+                const isHourly = billingUnit === 'ore';
+                
+                return (
+                  <>
+                    <div className="input-group">
+                      <label className="input-label">{isHourly ? 'Ore *' : 'Giornate *'}</label>
+                      <input 
+                        type="number" 
+                        className="input-field" 
+                        value={newWorkLog.quantita ?? ''} 
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          setNewWorkLog({ ...newWorkLog, quantita: isNaN(val) ? undefined : val });
+                        }} 
+                        min="0" 
+                        max={isHourly ? "24" : "1"}
+                        step={isHourly ? "0.25" : "0.01"}
+                        placeholder={isHourly ? "Es: 2.5" : "Es: 0.5"}
+                      />
+                      {!isHourly && (
+                        <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          💡 Massimo 1 giornata. Puoi usare frazioni (es: 0.5 per mezza giornata)
+                        </div>
+                      )}
+                    </div>
+                    <div className="input-group">
+                      <label className="input-label">Note</label>
+                      <input type="text" className="input-field" value={newWorkLog.note || ''} onChange={(e) => setNewWorkLog({ ...newWorkLog, note: e.target.value })} />
+                    </div>
+                  </>
+                );
+              })()}
+              <button className="btn btn-primary" style={{ width: '100%' }} onClick={addWorkLog} disabled={!newWorkLog.clienteId || newWorkLog.quantita === undefined || newWorkLog.quantita === null}><Check size={18} /> Registra</button>
             </div>
           </div>
         )}
