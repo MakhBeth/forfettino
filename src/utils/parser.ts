@@ -37,8 +37,7 @@ export const xmlToJson = async (xml: string): Promise<InvoiceJSON> => {
 };
 
 export const xmlToCompactJson = async (
-	xml: string,
-	options: Options = defaultOptions
+	xml: string
 ) => {
 	try {
 		const parsedJson = await xmlToJson(xml);
@@ -53,7 +52,7 @@ export const xmlToPDF = async (
 	options: Options = defaultOptions
 ): Promise<Blob> => {
 	try {
-		const parsedJson = await xmlToCompactJson(xml, options);
+		const parsedJson = await xmlToCompactJson(xml);
 		const doc = GeneratePDF(parsedJson, options);
 		const asPdf = pdf(doc);
 		const blob = await asPdf.toBlob();

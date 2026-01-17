@@ -12,9 +12,7 @@ import {
 	Text,
 	View,
 	StyleSheet,
-	Font,
 	Link,
-	Image,
 } from "@react-pdf/renderer";
 import type { Options } from "./types/Options";
 import { oc } from "ts-optchain";
@@ -41,6 +39,16 @@ const GeneratePDF = (invoice: Invoice, options: Options) => {
 	const locale = options.locale || "it";
 	const t = translations[locale as keyof typeof translations];
 
+	// Define table format separately
+	const tableFormat: any[] = [
+		{ width: "10%" },
+		{ width: "32%" },
+		{ width: "10%", textAlign: "right" },
+		{ width: "20%", textAlign: "right" },
+		{ width: "20%", textAlign: "right" },
+		{ width: "8%", textAlign: "right" },
+	];
+
 	// Create styles
 	const styles = StyleSheet.create({
 		page: {
@@ -65,14 +73,6 @@ const GeneratePDF = (invoice: Invoice, options: Options) => {
 			paddingBottom: 7,
 			paddingTop: 10,
 		},
-		tableFormat: [
-			{ width: "10%" },
-			{ width: "32%" },
-			{ width: "10%", textAlign: "right" },
-			{ width: "20%", textAlign: "right" },
-			{ width: "20%", textAlign: "right" },
-			{ width: "8%", textAlign: "right" },
-		],
 		numbers: {
 			fontFamily: "Courier",
 			textAlign: "right",
@@ -86,26 +86,23 @@ const GeneratePDF = (invoice: Invoice, options: Options) => {
 			paddingBottom: 7,
 			alignItems: "center",
 		},
-		recap: {
-			row: {
-				flexDirection: "row",
-				paddingLeft: 5,
-				paddingRight: 15,
-				paddingTop: 3,
-				paddingBottom: 3,
-				alignContent: "baseline",
-			},
-			label: {
-				width: "40%",
-				paddingTop: 3,
-				fontSize: 9,
-			},
-			value: {
-				width: "60%",
-				textAlign: "right",
-				fontFamily: "Courier",
-				paddingRight: 34,
-			},
+		recapRow: {
+			flexDirection: "row",
+			paddingLeft: 5,
+			paddingRight: 15,
+			paddingTop: 3,
+			paddingBottom: 3,
+		},
+		recapLabel: {
+			width: "40%",
+			paddingTop: 3,
+			fontSize: 9,
+		},
+		recapValue: {
+			width: "60%",
+			textAlign: "right",
+			fontFamily: "Courier",
+			paddingRight: 34,
 		},
 		title: {
 			fontFamily: "Helvetica-Bold",
@@ -197,12 +194,12 @@ const GeneratePDF = (invoice: Invoice, options: Options) => {
 
 	const LineHeader = (): React.ReactElement => (
 		<View style={styles.lineHeader}>
-			<Text style={[styles.line, styles.tableFormat[0]]}>{t.lineNumber}</Text>
-			<Text style={[styles.line, styles.tableFormat[1]]}>{t.description}</Text>
-			<Text style={[styles.line, styles.tableFormat[2]]}>{t.quantity}</Text>
-			<Text style={[styles.line, styles.tableFormat[3]]}>{t.price}</Text>
-			<Text style={[styles.line, styles.tableFormat[4]]}>{t.total}</Text>
-			<Text style={[styles.line, styles.tableFormat[5]]}>{t.vat}</Text>
+			<Text style={[styles.line, tableFormat[0]]}>{t.lineNumber}</Text>
+			<Text style={[styles.line, tableFormat[1]]}>{t.description}</Text>
+			<Text style={[styles.line, tableFormat[2]]}>{t.quantity}</Text>
+			<Text style={[styles.line, tableFormat[3]]}>{t.price}</Text>
+			<Text style={[styles.line, tableFormat[4]]}>{t.total}</Text>
+			<Text style={[styles.line, tableFormat[5]]}>{t.vat}</Text>
 		</View>
 	);
 
@@ -214,22 +211,22 @@ const GeneratePDF = (invoice: Invoice, options: Options) => {
 		currency: string;
 	}): React.ReactElement => (
 		<View style={styles.lineRow}>
-			<Text style={[styles.line, styles.tableFormat[0]]}>{line.number}</Text>
-			<Text style={[styles.line, styles.tableFormat[1]]}>
+			<Text style={[styles.line, tableFormat[0]]}>{line.number}</Text>
+			<Text style={[styles.line, tableFormat[1]]}>
 				{line.description}
 			</Text>
-			<Text style={[styles.line, styles.numbers, styles.tableFormat[2]]}>
+			<Text style={[styles.line, styles.numbers, tableFormat[2]]}>
 				{line.quantity}
 			</Text>
-			<Text style={[styles.line, styles.numbers, styles.tableFormat[3]]}>
+			<Text style={[styles.line, styles.numbers, tableFormat[3]]}>
 				{line.singlePrice.toLocaleString(locale)}
 				{currencySymbol(currency)}
 			</Text>
-			<Text style={[styles.line, styles.numbers, styles.tableFormat[4]]}>
+			<Text style={[styles.line, styles.numbers, tableFormat[4]]}>
 				{line.amount.toLocaleString(locale)}
 				{currencySymbol(currency)}
 			</Text>
-			<Text style={[styles.line, styles.numbers, styles.tableFormat[5]]}>
+			<Text style={[styles.line, styles.numbers, tableFormat[5]]}>
 				{line.tax}%
 			</Text>
 		</View>
@@ -309,33 +306,33 @@ const GeneratePDF = (invoice: Invoice, options: Options) => {
 		installment: Installment;
 	}): React.ReactElement => (
 		<View style={styles.recapBox}>
-			<View style={{ ...styles.recap.row, marginTop: 12 }}>
-				<Text style={styles.recap.label}>{t.totalProductsServices}</Text>
-				<Text style={styles.recap.value}>
+			<View style={{ ...styles.recapRow, marginTop: 12 }}>
+				<Text style={styles.recapLabel}>{t.totalProductsServices}</Text>
+				<Text style={styles.recapValue}>
 					{installment.taxSummary.paymentAmount.toLocaleString(locale)}
 					{currencySymbol(installment.currency)}
 				</Text>
 			</View>
-			<View style={styles.recap.row}>
-				<Text style={styles.recap.label}>{t.totalVat}</Text>
-				<Text style={styles.recap.value}>
+			<View style={styles.recapRow}>
+				<Text style={styles.recapLabel}>{t.totalVat}</Text>
+				<Text style={styles.recapValue}>
 					{installment.taxSummary.taxAmount.toLocaleString(locale)}
 					{currencySymbol(installment.currency)}
 				</Text>
 			</View>
 			<View
 				style={{
-					...styles.recap.row,
+					...styles.recapRow,
 					marginBottom: 20,
 					alignItems: "flex-end",
 				}}
 			>
-				<Text style={styles.recap.label}>
+				<Text style={styles.recapLabel}>
 					<Text style={{ fontFamily: "Helvetica-Bold", fontSize: 12 }}>
 						{t.total}
 					</Text>
 				</Text>
-				<Text style={[styles.recap.value, { fontSize: 21, lineHeight: 1 }]}>
+				<Text style={[styles.recapValue, { fontSize: 21, lineHeight: 1 }]}>
 					{installment.totalAmount.toLocaleString(locale)}
 					{currencySymbol(installment.currency)}
 				</Text>
@@ -350,7 +347,7 @@ const GeneratePDF = (invoice: Invoice, options: Options) => {
 
 	return (
 		<Document>
-			{invoice.installments.map((installment, index: number) => (
+			{invoice.installments.map((installment) => (
 				<Page
 					size="A4"
 					style={styles.page}
@@ -420,7 +417,7 @@ const GeneratePDF = (invoice: Invoice, options: Options) => {
 											{t.description}
 										</Text>
 									</View>
-									{installment.attachments.map((attachment, i) => (
+									{installment.attachments.map((attachment) => (
 										<View
 											style={styles.lineRow}
 											key={`attachment-${attachment.name}`}
