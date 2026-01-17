@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Settings, FileText, LayoutDashboard, Calendar, Upload, Plus, Trash2, Users, Clock, ChevronLeft, ChevronRight, X, Check, AlertTriangle, Download, Database, Edit, Github, FileArchive } from 'lucide-react';
 import { unzipSync } from 'fflate';
+import FatturaDiCortesia, { DEFAULT_FATTURA_SETTINGS, FatturaSettings } from './FatturaDiCortesia';
 
 // Type definitions
-type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs';
+type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs' | 'fatturaSettings';
 
 interface Cliente {
   id: string;
@@ -59,8 +60,8 @@ interface Toast {
 // IndexedDB Manager
 // ============================================
 const DB_NAME = 'ForfettarioDB';
-const DB_VERSION = 1;
-const STORES: StoreName[] = ['config', 'clienti', 'fatture', 'workLogs'];
+const DB_VERSION = 2;
+const STORES: StoreName[] = ['config', 'clienti', 'fatture', 'workLogs', 'fatturaSettings'];
 
 class IndexedDBManager {
   db: IDBDatabase | null;
@@ -92,6 +93,9 @@ class IndexedDBManager {
         }
         if (!db.objectStoreNames.contains('workLogs')) {
           db.createObjectStore('workLogs', { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains('fatturaSettings')) {
+          db.createObjectStore('fatturaSettings', { keyPath: 'id' });
         }
       };
     });
@@ -741,6 +745,7 @@ export default function ForfettarioApp(): JSX.Element {
   const [clienti, setClienti] = useState<Cliente[]>([]);
   const [fatture, setFatture] = useState<Fattura[]>([]);
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
+  const [fatturaSettings, setFatturaSettings] = useState<FatturaSettings>(DEFAULT_FATTURA_SETTINGS);
   
   const [newCliente, setNewCliente] = useState<Partial<Cliente>>({ nome: '', piva: '', email: '' });
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
@@ -763,6 +768,9 @@ export default function ForfettarioApp(): JSX.Element {
         await dbManager.init();
         const savedConfig = await dbManager.get('config', 'main');
         if (savedConfig) setConfig(savedConfig);
+        
+        const savedFatturaSettings = await dbManager.get('fatturaSettings', 'main');
+        if (savedFatturaSettings) setFatturaSettings(savedFatturaSettings);
         
         const [savedClienti, savedFatture, savedWorkLogs] = await Promise.all([
           dbManager.getAll('clienti'),
@@ -1208,6 +1216,9 @@ export default function ForfettarioApp(): JSX.Element {
             </div>
             <div className={`nav-item ${currentPage === 'calendario' ? 'active' : ''}`} onClick={() => setCurrentPage('calendario')}>
               <Calendar size={20} /> Calendario
+            </div>
+            <div className={`nav-item ${currentPage === 'fattura-cortesia' ? 'active' : ''}`} onClick={() => setCurrentPage('fattura-cortesia')}>
+              <FileArchive size={20} /> Fattura di Cortesia
             </div>
             <div className={`nav-item ${currentPage === 'impostazioni' ? 'active' : ''}`} onClick={() => setCurrentPage('impostazioni')}>
               <Settings size={20} /> Impostazioni
@@ -1689,6 +1700,18 @@ export default function ForfettarioApp(): JSX.Element {
                 </div>
               )}
             </>
+          )}
+          
+          {/* FATTURA DI CORTESIA */}
+          {currentPage === 'fattura-cortesia' && (
+            <FatturaDiCortesia
+              settings={fatturaSettings}
+              onSaveSettings={async (settings) => {
+                await dbManager.put('fatturaSettings', { id: 'main', ...settings });
+                setFatturaSettings(settings);
+              }}
+              showToast={showToast}
+            />
           )}
           
           {/* IMPOSTAZIONI */}
