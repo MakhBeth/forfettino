@@ -42,6 +42,10 @@ interface Config {
   partitaIva?: string;
   annoApertura?: number;
   codiciAteco?: Record<string, number>;
+  lastBackupMeta?: {
+    exportedAt?: string;
+    importedAt?: string;
+  };
 }
 
 interface Toast {
@@ -567,6 +571,7 @@ export default function ForfettarioApp(): JSX.Element {
   const [editingFattura, setEditingFattura] = useState<Fattura | null>(null);
   const [filtroAnnoFatture, setFiltroAnnoFatture] = useState<string>('tutte');
   const [ordinamentoFatture, setOrdinamentoFatture] = useState<{ campo: string; direzione: string }>({ campo: 'dataIncasso', direzione: 'desc' });
+  const [pendingImport, setPendingImport] = useState<{ data: any; fileDate: string | null } | null>(null);
   
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -609,32 +614,100 @@ export default function ForfettarioApp(): JSX.Element {
   // Export
   const handleExport = async () => {
     try {
-      const data = await dbManager.exportAll();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const exportedAt = new Date().toISOString();
+      const stores = await dbManager.exportAll();
+      
+      // Create backup with metadata
+      const backupData = {
+        meta: {
+          exportedAt,
+          appVersion: '1.0.0'
+        },
+        stores
+      };
+      
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `forfettario-backup-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
+      
+      // Save export timestamp to config
+      const updatedConfig = {
+        ...config,
+        lastBackupMeta: {
+          ...config.lastBackupMeta,
+          exportedAt
+        }
+      };
+      setConfig(updatedConfig);
+      await dbManager.put('config', updatedConfig);
+      
       showToast('Backup esportato!');
     } catch (error) {
       showToast('Errore export', 'error');
     }
   };
 
-  // Import
+  // Import - parse file and show conflict prompt
   const handleImport = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
     try {
       const text = await file.text();
-      const data = JSON.parse(text);
-      await dbManager.importAll(data);
+      const parsedData = JSON.parse(text);
+      
+      // Parse backup format - support both old and new formats
+      let stores;
+      let fileDate = null;
+      
+      if (parsedData.meta && parsedData.stores) {
+        // New format with metadata
+        stores = parsedData.stores;
+        fileDate = parsedData.meta.exportedAt || null;
+      } else {
+        // Legacy format - assume it's the stores directly
+        stores = parsedData;
+      }
+      
+      // Store pending import and show conflict modal
+      setPendingImport({ data: stores, fileDate });
+      setShowModal('import-conflict');
+      
+      // Reset file input
+      e.target.value = '';
+    } catch (error) {
+      console.error('Import error:', error);
+      showToast('Errore: file JSON non valido', 'error');
+      e.target.value = '';
+    }
+  };
+  
+  // Confirm import - actually perform the import
+  const confirmImport = async () => {
+    if (!pendingImport) return;
+    
+    try {
+      await dbManager.importAll(pendingImport.data);
       
       const savedConfig = await dbManager.get('config', 'main');
-      if (savedConfig) setConfig(savedConfig);
+      const importedAt = new Date().toISOString();
+      
+      // Update config with import timestamp
+      const updatedConfig = savedConfig ? {
+        ...savedConfig,
+        lastBackupMeta: {
+          ...savedConfig.lastBackupMeta,
+          importedAt,
+          exportedAt: pendingImport.fileDate || savedConfig.lastBackupMeta?.exportedAt
+        }
+      } : DEFAULT_CONFIG;
+      
+      await dbManager.put('config', updatedConfig);
+      setConfig(updatedConfig);
       
       const [savedClienti, savedFatture, savedWorkLogs] = await Promise.all([
         dbManager.getAll('clienti'),
@@ -646,11 +719,19 @@ export default function ForfettarioApp(): JSX.Element {
       setFatture(savedFatture || []);
       setWorkLogs(savedWorkLogs || []);
       
-      showToast('Dati importati!');
+      showToast('Dati importati con successo!');
       setShowModal(null);
+      setPendingImport(null);
     } catch (error) {
-      showToast('Errore import', 'error');
+      console.error('Import error:', error);
+      showToast('Errore durante l\'import', 'error');
     }
+  };
+  
+  // Cancel import
+  const cancelImport = () => {
+    setPendingImport(null);
+    setShowModal(null);
   };
   
   // Calcoli
@@ -1524,6 +1605,73 @@ export default function ForfettarioApp(): JSX.Element {
                 <Upload size={40} style={{ marginBottom: 16, color: 'var(--accent-primary)' }} />
                 <p style={{ fontWeight: 500 }}>Seleziona JSON</p>
               </label>
+            </div>
+          </div>
+        )}
+        
+        {showModal === 'import-conflict' && pendingImport && (
+          <div className="modal-overlay" onClick={cancelImport}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="modal-title">Conferma Importazione</h3>
+                <button className="close-btn" onClick={cancelImport}><X size={20} /></button>
+              </div>
+              
+              <div style={{ padding: 16, background: 'rgba(239, 68, 68, 0.1)', borderRadius: 12, marginBottom: 20, border: '1px solid var(--accent-red)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, color: 'var(--accent-red)' }}>
+                  <AlertTriangle size={20} /><strong>Attenzione</strong>
+                </div>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 8 }}>
+                  Stai per sovrascrivere tutti i dati locali con il backup selezionato.
+                </p>
+              </div>
+              
+              <div style={{ padding: 16, background: 'var(--bg-secondary)', borderRadius: 12, marginBottom: 20 }}>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>📁 Data backup file</div>
+                  <div style={{ fontWeight: 500 }}>
+                    {pendingImport.fileDate 
+                      ? new Date(pendingImport.fileDate).toLocaleString('it-IT', { 
+                          dateStyle: 'full', 
+                          timeStyle: 'short' 
+                        })
+                      : 'Formato legacy (data sconosciuta)'}
+                  </div>
+                </div>
+                
+                {config.lastBackupMeta?.exportedAt && (
+                  <div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 4 }}>💾 Ultimo backup locale</div>
+                    <div style={{ fontWeight: 500 }}>
+                      {new Date(config.lastBackupMeta.exportedAt).toLocaleString('it-IT', { 
+                        dateStyle: 'full', 
+                        timeStyle: 'short' 
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ marginBottom: 16, fontSize: '0.9rem', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                Cosa vuoi fare?
+              </div>
+              
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button 
+                  className="btn btn-secondary" 
+                  style={{ flex: 1 }} 
+                  onClick={cancelImport}
+                >
+                  <X size={18} /> Mantieni locale
+                </button>
+                <button 
+                  className="btn btn-danger" 
+                  style={{ flex: 1, background: 'var(--accent-red)' }} 
+                  onClick={confirmImport}
+                >
+                  <Database size={18} /> Sostituisci con file
+                </button>
+              </div>
             </div>
           </div>
         )}
