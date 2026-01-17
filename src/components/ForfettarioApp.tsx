@@ -54,6 +54,11 @@ interface Toast {
 }
 
 // ============================================
+// Constants
+// ============================================
+const APP_VERSION = '1.0.0';
+
+// ============================================
 // IndexedDB Manager
 // ============================================
 const DB_NAME = 'ForfettarioDB';
@@ -548,7 +553,8 @@ const DEFAULT_CONFIG: Config = {
   annoApertura: new Date().getFullYear(),
   codiciAteco: [],
   nomeAttivita: '',
-  aliquotaOverride: null
+  aliquotaOverride: null,
+  lastBackupMeta: undefined
 };
 
 export default function ForfettarioApp(): JSX.Element {
@@ -621,7 +627,7 @@ export default function ForfettarioApp(): JSX.Element {
       const backupData = {
         meta: {
           exportedAt,
-          appVersion: '1.0.0'
+          appVersion: APP_VERSION
         },
         stores
       };
