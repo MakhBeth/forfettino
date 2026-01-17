@@ -130,7 +130,7 @@ const GeneratePDF = (invoice: Invoice, options: Options) => {
 			case "USD":
 				return "$";
 
-			case "BGP":
+			case "GBP":
 				return "£";
 
 			default:

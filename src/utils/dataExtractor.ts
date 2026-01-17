@@ -117,7 +117,7 @@ export default function dataExtractor(json: InvoiceJSON): Invoice {
 						iban: payment.IBAN("Iban Mancante"),
 						method: payment.ModalitaPagamento(),
 						bank: payment.IstitutoFinanziario(),
-						regularPaymentDate: new Date(payment.DataScadenzaPagamento("")),
+						regularPaymentDate: payment.DataScadenzaPagamento("") ? new Date(payment.DataScadenzaPagamento("")) : undefined,
 						type: payment.ModalitaPagamento(),
 					};
 				}

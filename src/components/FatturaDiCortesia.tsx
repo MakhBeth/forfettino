@@ -5,7 +5,6 @@ import type { Options } from '../utils/types/Options';
 
 export interface FatturaSettings {
   primaryColor: string;
-  headingImage?: string;
   footer: boolean;
 }
 
@@ -29,17 +28,6 @@ const FatturaDiCortesia: React.FC<FatturaDiCortesiaProps> = ({
   const [xmlFile, setXmlFile] = useState<File | null>(null);
   const [pdfLanguage, setPdfLanguage] = useState<'it' | 'de' | 'en' | 'es'>('it');
   const [isGenerating, setIsGenerating] = useState(false);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setLocalSettings({ ...localSettings, headingImage: reader.result as string });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleSaveSettings = async () => {
     try {
@@ -129,32 +117,6 @@ const FatturaDiCortesia: React.FC<FatturaDiCortesiaProps> = ({
             />
             Mostra footer nel PDF
           </label>
-        </div>
-
-        <div className="input-group">
-          <label className="input-label">Immagine intestazione (opzionale)</label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="input-field"
-          />
-          {localSettings.headingImage && (
-            <div style={{ marginTop: '10px' }}>
-              <img 
-                src={localSettings.headingImage} 
-                alt="Preview" 
-                style={{ maxWidth: '200px', maxHeight: '100px', objectFit: 'contain' }}
-              />
-              <button
-                className="btn btn-danger btn-sm"
-                onClick={() => setLocalSettings({ ...localSettings, headingImage: undefined })}
-                style={{ marginLeft: '10px' }}
-              >
-                Rimuovi
-              </button>
-            </div>
-          )}
         </div>
 
         <button className="btn btn-primary" onClick={handleSaveSettings}>
