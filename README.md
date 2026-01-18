@@ -4,6 +4,8 @@
 
 App per gestire il regime forfettario - P.IVA italiana
 
+**Live version:** https://forfettairo.netlify.app/
+
 ## 🚀 Quick Start
 
 ### Prerequisites
