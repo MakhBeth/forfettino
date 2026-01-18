@@ -57,18 +57,30 @@ export default defineConfig({
   ],
   build: {
     modulePreload: {
-      // Don't preload heavy chunks - they'll be loaded on demand
       resolveDependencies: (filename, deps) => {
+        // Don't preload heavy chunks
         return deps.filter(dep => !dep.includes('vendor-pdf') && !dep.includes('vendor-zip'));
       },
     },
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-pdf': ['@react-pdf/renderer'],
-          'vendor-zip': ['fflate'],
-          'vendor-icons': ['lucide-react'],
+        manualChunks: (id) => {
+          // React core - must come first to avoid being pulled into other chunks
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+            return 'vendor-react';
+          }
+          // PDF library - isolated chunk, only loaded when needed
+          if (id.includes('@react-pdf/renderer') || id.includes('node_modules/@react-pdf/')) {
+            return 'vendor-pdf';
+          }
+          // Icons
+          if (id.includes('lucide-react')) {
+            return 'vendor-icons';
+          }
+          // ZIP handling
+          if (id.includes('fflate')) {
+            return 'vendor-zip';
+          }
         },
       },
     },
