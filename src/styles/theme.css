@@ -315,8 +315,6 @@ dialog.modal {
   max-width: 500px;
   width: 90%;
   max-height: 90vh;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
   color: var(--text-primary);
 }
 
@@ -332,10 +330,10 @@ dialog.modal::backdrop {
 .close-btn:focus-visible { outline: 2px solid var(--accent-secondary); outline-offset: 2px; }
 
 .upload-zone {
+  display: block;
   border: 2px dashed var(--border);
   border-radius: 16px;
   padding: 48px;
-  margin: 4px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s;
