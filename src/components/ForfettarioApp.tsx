@@ -1,30 +1,35 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Settings, FileText, LayoutDashboard, Calendar, Download, Upload, Github, FilePlus } from 'lucide-react';
 import { AppProvider, useApp } from '../context/AppContext';
-import { Dashboard } from './pages/Dashboard';
-import { FatturePage } from './pages/Fatture';
-import { Calendario } from './pages/Calendario';
-import { Impostazioni } from './pages/Impostazioni';
-import { FatturaCortesia } from './pages/FatturaCortesia';
-import { UploadFatturaModal } from './modals/UploadFatturaModal';
-import { BatchUploadModal } from './modals/BatchUploadModal';
-import { UploadZipModal } from './modals/UploadZipModal';
-import { ImportSummaryModal } from './modals/ImportSummaryModal';
-import { AddClienteModal } from './modals/AddClienteModal';
-import { EditClienteModal } from './modals/EditClienteModal';
-import { AddWorkLogModal } from './modals/AddWorkLogModal';
-import { EditWorkLogModal } from './modals/EditWorkLogModal';
-import { ImportBackupModal } from './modals/ImportBackupModal';
-import { EditDataIncassoModal } from './modals/EditDataIncassoModal';
-import { CourtesyInvoiceModal } from './modals/CourtesyInvoiceModal';
-import { ManageServicesModal } from './modals/ManageServicesModal';
-import { NuovaFatturaModal } from './modals/NuovaFatturaModal';
 import { Toast } from './shared/Toast';
+import { LoadingSpinner } from './shared/LoadingSpinner';
 import { parseFatturaXML, extractXmlFromZip } from '../lib/utils/xmlParsing';
 import { processBatchXmlFiles } from '../lib/utils/batchImport';
 import { extractEmittenteFromXml, autoPopulateConfig } from '../lib/utils/configAutoPopulate';
 import type { Cliente, Fattura, ImportSummary, WorkLog } from '../types';
 import '../styles/theme.css';
+
+// Lazy load pages
+const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const FatturePage = lazy(() => import('./pages/Fatture').then(m => ({ default: m.FatturePage })));
+const Calendario = lazy(() => import('./pages/Calendario').then(m => ({ default: m.Calendario })));
+const Impostazioni = lazy(() => import('./pages/Impostazioni').then(m => ({ default: m.Impostazioni })));
+const FatturaCortesia = lazy(() => import('./pages/FatturaCortesia').then(m => ({ default: m.FatturaCortesia })));
+
+// Lazy load modals
+const UploadFatturaModal = lazy(() => import('./modals/UploadFatturaModal').then(m => ({ default: m.UploadFatturaModal })));
+const BatchUploadModal = lazy(() => import('./modals/BatchUploadModal').then(m => ({ default: m.BatchUploadModal })));
+const UploadZipModal = lazy(() => import('./modals/UploadZipModal').then(m => ({ default: m.UploadZipModal })));
+const ImportSummaryModal = lazy(() => import('./modals/ImportSummaryModal').then(m => ({ default: m.ImportSummaryModal })));
+const AddClienteModal = lazy(() => import('./modals/AddClienteModal').then(m => ({ default: m.AddClienteModal })));
+const EditClienteModal = lazy(() => import('./modals/EditClienteModal').then(m => ({ default: m.EditClienteModal })));
+const AddWorkLogModal = lazy(() => import('./modals/AddWorkLogModal').then(m => ({ default: m.AddWorkLogModal })));
+const EditWorkLogModal = lazy(() => import('./modals/EditWorkLogModal').then(m => ({ default: m.EditWorkLogModal })));
+const ImportBackupModal = lazy(() => import('./modals/ImportBackupModal').then(m => ({ default: m.ImportBackupModal })));
+const EditDataIncassoModal = lazy(() => import('./modals/EditDataIncassoModal').then(m => ({ default: m.EditDataIncassoModal })));
+const CourtesyInvoiceModal = lazy(() => import('./modals/CourtesyInvoiceModal').then(m => ({ default: m.CourtesyInvoiceModal })));
+const ManageServicesModal = lazy(() => import('./modals/ManageServicesModal').then(m => ({ default: m.ManageServicesModal })));
+const NuovaFatturaModal = lazy(() => import('./modals/NuovaFatturaModal').then(m => ({ default: m.NuovaFatturaModal })));
 
 function ForfettarioAppInner() {
   const { toast, exportData, importData, clienti, fatture, showToast, addCliente, addFattura, addWorkLog, updateCliente, updateFattura, updateWorkLog, config, setConfig } = useApp();
@@ -233,180 +238,210 @@ function ForfettarioAppInner() {
         </nav>
 
         <main id="main-content" className="main-content">
-          {currentPage === 'dashboard' && (
-            <Dashboard
-              annoSelezionato={annoSelezionato}
-              setAnnoSelezionato={setAnnoSelezionato}
-            />
-          )}
+          <Suspense fallback={<LoadingSpinner />}>
+            {currentPage === 'dashboard' && (
+              <Dashboard
+                annoSelezionato={annoSelezionato}
+                setAnnoSelezionato={setAnnoSelezionato}
+              />
+            )}
 
-          {currentPage === 'fatture' && (
-            <FatturePage
-              setShowModal={setShowModal}
-              setEditingFattura={setEditingFattura}
-            />
-          )}
+            {currentPage === 'fatture' && (
+              <FatturePage
+                setShowModal={setShowModal}
+                setEditingFattura={setEditingFattura}
+              />
+            )}
 
-          {currentPage === 'calendario' && (
-            <Calendario
-              setShowModal={setShowModal}
-              setSelectedDate={setSelectedDate}
-              setEditingWorkLog={setEditingWorkLog}
-            />
-          )}
+            {currentPage === 'calendario' && (
+              <Calendario
+                setShowModal={setShowModal}
+                setSelectedDate={setSelectedDate}
+                setEditingWorkLog={setEditingWorkLog}
+              />
+            )}
 
-          {currentPage === 'fattura-cortesia' && (
-            <FatturaCortesia />
-          )}
+            {currentPage === 'fattura-cortesia' && (
+              <FatturaCortesia />
+            )}
 
-          {currentPage === 'impostazioni' && (
-            <Impostazioni
-              setShowModal={setShowModal}
-              setEditingCliente={setEditingCliente}
-              handleExport={exportData}
-            />
-          )}
+            {currentPage === 'impostazioni' && (
+              <Impostazioni
+                setShowModal={setShowModal}
+                setEditingCliente={setEditingCliente}
+                handleExport={exportData}
+              />
+            )}
+          </Suspense>
         </main>
 
-        {/* MODALS */}
-        <UploadFatturaModal
-          isOpen={showModal === 'upload-fattura'}
-          onClose={() => setShowModal(null)}
-          onUpload={handleFatturaUpload}
-        />
+        {/* MODALS - Lazy loaded, rendered only when open */}
+        <Suspense fallback={null}>
+          {showModal === 'upload-fattura' && (
+            <UploadFatturaModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              onUpload={handleFatturaUpload}
+            />
+          )}
 
-        <BatchUploadModal
-          isOpen={showModal === 'batch-upload-fattura'}
-          onClose={() => setShowModal(null)}
-          onUpload={handleBatchUpload}
-        />
+          {showModal === 'batch-upload-fattura' && (
+            <BatchUploadModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              onUpload={handleBatchUpload}
+            />
+          )}
 
-        <UploadZipModal
-          isOpen={showModal === 'upload-zip'}
-          onClose={() => setShowModal(null)}
-          onUpload={handleZipUpload}
-        />
+          {showModal === 'upload-zip' && (
+            <UploadZipModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              onUpload={handleZipUpload}
+            />
+          )}
 
-        <ImportSummaryModal
-          isOpen={showModal === 'import-summary'}
-          onClose={() => setShowModal(null)}
-          summary={importSummary}
-        />
+          {showModal === 'import-summary' && (
+            <ImportSummaryModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              summary={importSummary}
+            />
+          )}
 
-        <AddClienteModal
-          isOpen={showModal === 'add-cliente'}
-          onClose={() => setShowModal(null)}
-          newCliente={newCliente}
-          setNewCliente={setNewCliente}
-          onAdd={async () => {
-            if (!newCliente.nome) return;
+          {showModal === 'add-cliente' && (
+            <AddClienteModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              newCliente={newCliente}
+              setNewCliente={setNewCliente}
+              onAdd={async () => {
+                if (!newCliente.nome) return;
 
-            const cliente: Cliente = {
-              id: Date.now().toString(),
-              nome: newCliente.nome,
-              piva: newCliente.piva || '',
-              email: newCliente.email || ''
-            };
+                const cliente: Cliente = {
+                  id: Date.now().toString(),
+                  nome: newCliente.nome,
+                  piva: newCliente.piva || '',
+                  email: newCliente.email || ''
+                };
 
-            await addCliente(cliente);
-            setNewCliente({ nome: '', piva: '', email: '' });
-            setShowModal(null);
-            showToast('Cliente aggiunto!');
-          }}
-        />
+                await addCliente(cliente);
+                setNewCliente({ nome: '', piva: '', email: '' });
+                setShowModal(null);
+                showToast('Cliente aggiunto!');
+              }}
+            />
+          )}
 
-        <EditClienteModal
-          isOpen={showModal === 'edit-cliente'}
-          onClose={() => setShowModal(null)}
-          cliente={editingCliente}
-          setCliente={setEditingCliente}
-          onUpdate={async () => {
-            if (!editingCliente) return;
+          {showModal === 'edit-cliente' && (
+            <EditClienteModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              cliente={editingCliente}
+              setCliente={setEditingCliente}
+              onUpdate={async () => {
+                if (!editingCliente) return;
 
-            await updateCliente(editingCliente);
-            setEditingCliente(null);
-            setShowModal(null);
-            showToast('Cliente aggiornato!');
-          }}
-        />
+                await updateCliente(editingCliente);
+                setEditingCliente(null);
+                setShowModal(null);
+                showToast('Cliente aggiornato!');
+              }}
+            />
+          )}
 
-        <AddWorkLogModal
-          isOpen={showModal === 'add-work'}
-          onClose={() => setShowModal(null)}
-          selectedDate={selectedDate}
-          newWorkLog={newWorkLog}
-          setNewWorkLog={setNewWorkLog}
-          clienti={clienti}
-          onAdd={async () => {
-            if (!selectedDate || !newWorkLog.clienteId || newWorkLog.quantita === undefined) return;
+          {showModal === 'add-work' && (
+            <AddWorkLogModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              selectedDate={selectedDate}
+              newWorkLog={newWorkLog}
+              setNewWorkLog={setNewWorkLog}
+              clienti={clienti}
+              onAdd={async () => {
+                if (!selectedDate || !newWorkLog.clienteId || newWorkLog.quantita === undefined) return;
 
-            const workLog = {
-              id: Date.now().toString(),
-              clienteId: newWorkLog.clienteId,
-              data: selectedDate,
-              tipo: newWorkLog.tipo || 'ore',
-              quantita: newWorkLog.quantita,
-              note: newWorkLog.note || ''
-            };
+                const workLog = {
+                  id: Date.now().toString(),
+                  clienteId: newWorkLog.clienteId,
+                  data: selectedDate,
+                  tipo: newWorkLog.tipo || 'ore',
+                  quantita: newWorkLog.quantita,
+                  note: newWorkLog.note || ''
+                };
 
-            await addWorkLog(workLog);
-            setNewWorkLog({ clienteId: '', quantita: undefined, tipo: 'ore', note: '' });
-            setShowModal(null);
-            showToast('Lavoro registrato!');
-          }}
-        />
+                await addWorkLog(workLog);
+                setNewWorkLog({ clienteId: '', quantita: undefined, tipo: 'ore', note: '' });
+                setShowModal(null);
+                showToast('Lavoro registrato!');
+              }}
+            />
+          )}
 
-        <ImportBackupModal
-          isOpen={showModal === 'import'}
-          onClose={() => setShowModal(null)}
-          onImport={handleImport}
-        />
+          {showModal === 'import' && (
+            <ImportBackupModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              onImport={handleImport}
+            />
+          )}
 
-        <EditWorkLogModal
-          isOpen={showModal === 'edit-work'}
-          onClose={() => setShowModal(null)}
-          workLog={editingWorkLog}
-          setWorkLog={setEditingWorkLog}
-          clienti={clienti}
-          onUpdate={async () => {
-            if (!editingWorkLog) return;
+          {showModal === 'edit-work' && (
+            <EditWorkLogModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              workLog={editingWorkLog}
+              setWorkLog={setEditingWorkLog}
+              clienti={clienti}
+              onUpdate={async () => {
+                if (!editingWorkLog) return;
 
-            await updateWorkLog(editingWorkLog);
-            setEditingWorkLog(null);
-            setShowModal(null);
-            showToast('Attività aggiornata!');
-          }}
-        />
+                await updateWorkLog(editingWorkLog);
+                setEditingWorkLog(null);
+                setShowModal(null);
+                showToast('Attività aggiornata!');
+              }}
+            />
+          )}
 
-        <EditDataIncassoModal
-          isOpen={showModal === 'edit-data-incasso'}
-          onClose={() => setShowModal(null)}
-          fattura={editingFattura}
-          setFattura={setEditingFattura}
-          onUpdate={async () => {
-            if (!editingFattura) return;
+          {showModal === 'edit-data-incasso' && (
+            <EditDataIncassoModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              fattura={editingFattura}
+              setFattura={setEditingFattura}
+              onUpdate={async () => {
+                if (!editingFattura) return;
 
-            await updateFattura(editingFattura);
-            setEditingFattura(null);
-            setShowModal(null);
-            showToast('Data incasso aggiornata!');
-          }}
-        />
+                await updateFattura(editingFattura);
+                setEditingFattura(null);
+                setShowModal(null);
+                showToast('Data incasso aggiornata!');
+              }}
+            />
+          )}
 
-        <CourtesyInvoiceModal
-          isOpen={showModal === 'courtesy-invoice'}
-          onClose={() => setShowModal(null)}
-        />
+          {showModal === 'courtesy-invoice' && (
+            <CourtesyInvoiceModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+            />
+          )}
 
-        <ManageServicesModal
-          isOpen={showModal === 'manage-services'}
-          onClose={() => setShowModal(null)}
-        />
+          {showModal === 'manage-services' && (
+            <ManageServicesModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+            />
+          )}
 
-        <NuovaFatturaModal
-          isOpen={showModal === 'nuova-fattura'}
-          onClose={() => setShowModal(null)}
-        />
+          {showModal === 'nuova-fattura' && (
+            <NuovaFatturaModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+            />
+          )}
+        </Suspense>
 
         {toast && <Toast toast={toast} />}
       </div>

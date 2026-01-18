@@ -2,8 +2,6 @@ import { useState, useRef, useMemo } from 'react';
 import { Upload, Download, FileText, ChevronDown, ChevronUp, Plus, Trash2, X, AlertTriangle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { parseXmlToInvoice } from '../../lib/pdf/xmlParser';
-import GeneratePDF from '../../lib/pdf/renderer';
-import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 import type { Invoice, PDFOptions, Line } from '../../lib/pdf/types';
 
@@ -198,6 +196,12 @@ export function FatturaCortesia() {
 
     setIsGenerating(true);
     try {
+      // Dynamic import of heavy PDF libraries
+      const [{ default: GeneratePDF }, { pdf }] = await Promise.all([
+        import('../../lib/pdf/renderer'),
+        import('@react-pdf/renderer'),
+      ]);
+
       const options: PDFOptions = {
         colors: {
           primary: primaryColor,

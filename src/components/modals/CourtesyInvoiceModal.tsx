@@ -3,8 +3,6 @@ import { X, Check, Plus, Trash2, Upload, FileText, Edit2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useDialog } from '../../hooks/useDialog';
 import { parseXmlToInvoice, validateInvoice } from '../../lib/pdf/xmlParser';
-import GeneratePDF from '../../lib/pdf/renderer';
-import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 import type { Invoice, Company, Line, Installment, PDFOptions } from '../../lib/pdf/types';
 
@@ -148,6 +146,12 @@ export function CourtesyInvoiceModal({ isOpen, onClose }: CourtesyInvoiceModalPr
 
     setIsGenerating(true);
     try {
+      // Dynamic import of heavy PDF libraries
+      const [{ default: GeneratePDF }, { pdf }] = await Promise.all([
+        import('../../lib/pdf/renderer'),
+        import('@react-pdf/renderer'),
+      ]);
+
       const pdfDoc = GeneratePDF(invoice, pdfOptions);
       const blob = await pdf(pdfDoc).toBlob();
 
