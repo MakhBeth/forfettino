@@ -1,11 +1,75 @@
-import { useState, useRef } from 'react';
-import { Upload, Download, FileText, ChevronDown, ChevronUp, Plus, Trash2, X } from 'lucide-react';
+import { useState, useRef, useMemo } from 'react';
+import { Upload, Download, FileText, ChevronDown, ChevronUp, Plus, Trash2, X, AlertTriangle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { parseXmlToInvoice } from '../../lib/pdf/xmlParser';
 import GeneratePDF from '../../lib/pdf/renderer';
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 import type { Invoice, PDFOptions, Line } from '../../lib/pdf/types';
+
+// WCAG contrast ratio utilities
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+}
+
+function getLuminance(r: number, g: number, b: number): number {
+  const [rs, gs, bs] = [r, g, b].map(c => {
+    c = c / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+function getContrastRatio(color1: string, color2: string): number {
+  const rgb1 = hexToRgb(color1);
+  const rgb2 = hexToRgb(color2);
+  if (!rgb1 || !rgb2) return 0;
+
+  const lum1 = getLuminance(rgb1.r, rgb1.g, rgb1.b);
+  const lum2 = getLuminance(rgb2.r, rgb2.g, rgb2.b);
+  const lighter = Math.max(lum1, lum2);
+  const darker = Math.min(lum1, lum2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function adjustColorForContrast(color: string, background: string, minRatio: number = 4.5): string {
+  const rgb = hexToRgb(color);
+  const bgRgb = hexToRgb(background);
+  if (!rgb || !bgRgb) return color;
+
+  const bgLum = getLuminance(bgRgb.r, bgRgb.g, bgRgb.b);
+  let { r, g, b } = rgb;
+
+  // Determine if we need to darken or lighten
+  const shouldDarken = bgLum > 0.5;
+
+  for (let i = 0; i < 100; i++) {
+    const ratio = getContrastRatio(
+      `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`,
+      background
+    );
+    if (ratio >= minRatio) break;
+
+    if (shouldDarken) {
+      r = Math.max(0, r - 5);
+      g = Math.max(0, g - 5);
+      b = Math.max(0, b - 5);
+    } else {
+      r = Math.min(255, r + 5);
+      g = Math.min(255, g + 5);
+      b = Math.min(255, b + 5);
+    }
+  }
+
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+const MIN_CONTRAST_RATIO = 4.5; // WCAG AA for normal text
 
 export function FatturaCortesia() {
   const { config, setConfig, showToast } = useApp();
@@ -14,6 +78,12 @@ export function FatturaCortesia() {
   // PDF Settings (from config)
   const [primaryColor, setPrimaryColor] = useState(config.courtesyInvoice?.primaryColor || '#6699cc');
   const [textColor, setTextColor] = useState(config.courtesyInvoice?.textColor || '#033243');
+
+  // Contrast validation against white background
+  const primaryContrast = useMemo(() => getContrastRatio(primaryColor, '#ffffff'), [primaryColor]);
+  const textContrast = useMemo(() => getContrastRatio(textColor, '#ffffff'), [textColor]);
+  const isPrimaryContrastOk = primaryContrast >= MIN_CONTRAST_RATIO;
+  const isTextContrastOk = textContrast >= MIN_CONTRAST_RATIO;
   const [showFooter, setShowFooter] = useState(config.courtesyInvoice?.includeFooter !== false);
   const [footerText, setFooterText] = useState(config.courtesyInvoice?.footerText || '');
   const [footerLink, setFooterLink] = useState(config.courtesyInvoice?.footerLink || '');
@@ -238,6 +308,20 @@ export function FatturaCortesia() {
                 style={{ flex: 1 }}
               />
             </div>
+            {!isPrimaryContrastOk && (
+              <div style={{ marginTop: 8, padding: '8px 12px', background: 'rgba(245, 158, 11, 0.15)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
+                <AlertTriangle size={16} style={{ color: 'var(--accent-orange)', flexShrink: 0 }} />
+                <span style={{ color: 'var(--accent-orange)' }}>Contrasto {primaryContrast.toFixed(1)}:1 (min 4.5:1)</span>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{ marginLeft: 'auto', padding: '4px 8px', background: 'var(--accent-orange)', color: '#000', fontSize: '0.75rem' }}
+                  onClick={() => setPrimaryColor(adjustColorForContrast(primaryColor, '#ffffff'))}
+                >
+                  Correggi
+                </button>
+              </div>
+            )}
           </div>
           <div className="input-group">
             <label className="input-label">Colore Testo</label>
@@ -257,6 +341,20 @@ export function FatturaCortesia() {
                 style={{ flex: 1 }}
               />
             </div>
+            {!isTextContrastOk && (
+              <div style={{ marginTop: 8, padding: '8px 12px', background: 'rgba(245, 158, 11, 0.15)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem' }}>
+                <AlertTriangle size={16} style={{ color: 'var(--accent-orange)', flexShrink: 0 }} />
+                <span style={{ color: 'var(--accent-orange)' }}>Contrasto {textContrast.toFixed(1)}:1 (min 4.5:1)</span>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{ marginLeft: 'auto', padding: '4px 8px', background: 'var(--accent-orange)', color: '#000', fontSize: '0.75rem' }}
+                  onClick={() => setTextColor(adjustColorForContrast(textColor, '#ffffff'))}
+                >
+                  Correggi
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
