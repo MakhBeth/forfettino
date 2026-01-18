@@ -15,6 +15,8 @@ export function FatturaCortesia() {
   const [primaryColor, setPrimaryColor] = useState(config.courtesyInvoice?.primaryColor || '#6699cc');
   const [textColor, setTextColor] = useState(config.courtesyInvoice?.textColor || '#033243');
   const [showFooter, setShowFooter] = useState(config.courtesyInvoice?.includeFooter !== false);
+  const [footerText, setFooterText] = useState(config.courtesyInvoice?.footerText || '');
+  const [footerLink, setFooterLink] = useState(config.courtesyInvoice?.footerLink || '');
   const [locale, setLocale] = useState(config.courtesyInvoice?.locale || 'it');
   const [logoBase64, setLogoBase64] = useState<string | undefined>(config.courtesyInvoice?.logoBase64);
 
@@ -36,6 +38,8 @@ export function FatturaCortesia() {
         primaryColor,
         textColor,
         includeFooter: showFooter,
+        footerText: footerText || undefined,
+        footerLink: footerLink || undefined,
         locale,
         logoBase64,
       }
@@ -130,6 +134,8 @@ export function FatturaCortesia() {
           text: textColor,
         },
         footer: showFooter,
+        footerText: footerText || undefined,
+        footerLink: footerLink || undefined,
         locale,
         logoSrc: logoBase64,
       };
@@ -264,6 +270,31 @@ export function FatturaCortesia() {
             <span style={{ color: 'var(--text-secondary)' }}>Mostra footer nel PDF</span>
           </label>
         </div>
+
+        {showFooter && (
+          <div className="grid-2" style={{ marginTop: 12 }}>
+            <div className="input-group">
+              <label className="input-label">Testo Footer (opzionale)</label>
+              <input
+                type="text"
+                className="input-field"
+                value={footerText}
+                onChange={(e) => setFooterText(e.target.value)}
+                placeholder="Generato con"
+              />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Link Footer (opzionale)</label>
+              <input
+                type="url"
+                className="input-field"
+                value={footerLink}
+                onChange={(e) => setFooterLink(e.target.value)}
+                placeholder="https://esempio.com"
+              />
+            </div>
+          </div>
+        )}
 
         <button
           className="btn btn-primary"

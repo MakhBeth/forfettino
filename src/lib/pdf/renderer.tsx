@@ -482,13 +482,22 @@ const GeneratePDF = (invoice: Invoice, options: PDFOptions) => {
                 }}
               >
                 <Text>
-                  {t.generatedBy}{' '}
-                  <Link
-                    style={{ color: colors.primary }}
-                    src="https://github.com/MakhBeth/forfettAIro"
-                  >
-                    ForfettAIro
-                  </Link>
+                  {options.footerText || t.generatedBy}{' '}
+                  {options.footerLink ? (
+                    <Link
+                      style={{ color: colors.primary }}
+                      src={options.footerLink}
+                    >
+                      {options.footerLink.replace(/^https?:\/\//, '')}
+                    </Link>
+                  ) : (
+                    <Link
+                      style={{ color: colors.primary }}
+                      src="https://github.com/MakhBeth/forfettAIro"
+                    >
+                      ForfettAIro
+                    </Link>
+                  )}
                 </Text>
               </View>
             )}

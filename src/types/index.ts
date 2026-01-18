@@ -93,6 +93,8 @@ export interface CourtesyInvoiceConfig {
 
   // Settings
   includeFooter: boolean;
+  footerText?: string;
+  footerLink?: string;
   locale: string;
 }
 

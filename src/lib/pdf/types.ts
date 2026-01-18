@@ -76,6 +76,8 @@ export interface Colors {
 export interface PDFOptions {
   colors?: Colors;
   footer?: boolean;
+  footerText?: string;
+  footerLink?: string;
   locale?: string;
   logoSrc?: string;
 }

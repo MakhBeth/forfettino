@@ -13,10 +13,10 @@ const Footer: React.FC<FooterProps> = ({ version = '1.0.0' }) => {
       <div className={styles.container}>
         <div className={styles.left}>
           <p className={styles.copyright}>
-            © {currentYear} ForfettAIro - Vibecoded
+            © {currentYear} ForfettAIro
           </p>
           <p className={styles.description}>
-            App per gestire il regime forfettario - P.IVA italiana
+            Gestione P.IVA forfettaria
           </p>
         </div>
         <div className={styles.right}>
