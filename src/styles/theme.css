@@ -307,18 +307,7 @@ select.input-field option {
 
 .work-indicator { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-primary); position: absolute; bottom: 8px; }
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
-
-.modal {
+dialog.modal {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -328,6 +317,12 @@ select.input-field option {
   max-height: 90vh;
   overflow-y: auto;
   scrollbar-gutter: stable;
+  color: var(--text-primary);
+}
+
+dialog.modal::backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
 }
 
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }

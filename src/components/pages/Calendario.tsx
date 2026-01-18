@@ -109,39 +109,36 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
             const dayLogs = workLogs.filter(w => w.data === dateStr);
             const hasWork = dayLogs.length > 0;
 
-            const totalHours = dayLogs.reduce((sum, log) => sum + getWorkLogQuantita(log), 0);
-
-            let previewText = '';
-            let primaryClientId: string | null = null;
-            let primaryClient: Cliente | undefined = undefined;
+            // Group logs by client
+            const clientData: Array<{ cliente: Cliente; total: number; tipo: 'ore' | 'giornata'; logs: typeof dayLogs }> = [];
             if (hasWork) {
-              const clientHours: Record<string, number> = {};
+              const clientGroups: Record<string, typeof dayLogs> = {};
               dayLogs.forEach(log => {
-                const hours = getWorkLogQuantita(log);
-                clientHours[log.clienteId] = (clientHours[log.clienteId] || 0) + hours;
+                if (!clientGroups[log.clienteId]) clientGroups[log.clienteId] = [];
+                clientGroups[log.clienteId].push(log);
               });
-              primaryClientId = Object.keys(clientHours).reduce((a, b) =>
-                clientHours[a] > clientHours[b] ? a : b
-              );
-              primaryClient = clienti.find(c => c.id === primaryClientId!);
-              if (primaryClient) {
-                const clientName = primaryClient.nome.length > 15
-                  ? primaryClient.nome.substring(0, 12) + '...'
-                  : primaryClient.nome;
-                const allDays = dayLogs.every(l => l.tipo === 'giornata');
-                const allHours = dayLogs.every(l => l.tipo === 'ore');
-                const unit = allDays ? 'gg' : (allHours ? 'h' : 'h');
-                previewText = `${clientName} — ${totalHours.toFixed(2)}${unit}`;
-              }
+
+              Object.entries(clientGroups).forEach(([clienteId, logs]) => {
+                const cliente = clienti.find(c => c.id === clienteId);
+                if (cliente) {
+                  const total = logs.reduce((sum, log) => sum + getWorkLogQuantita(log), 0);
+                  const allDays = logs.every(l => l.tipo === 'giornata');
+                  clientData.push({ cliente, total, tipo: allDays ? 'giornata' : 'ore', logs });
+                }
+              });
+
+              // Sort by total hours descending
+              clientData.sort((a, b) => b.total - a.total);
             }
 
-            const clientColor = primaryClientId ? getClientDisplayColor(primaryClient, primaryClientId) : null;
+            const primaryClient = clientData[0]?.cliente;
+            const primaryColor = primaryClient ? getClientDisplayColor(primaryClient, primaryClient.id) : null;
 
             return (
               <div
                 key={i}
                 className={`calendar-day ${day.otherMonth ? 'other-month' : ''} ${dateStr === today ? 'today' : ''} ${isWeekendDay ? 'weekend' : ''} ${hasWork ? 'has-work' : ''} ${draggedWorkLog ? 'drop-target' : ''}`}
-                style={hasWork && clientColor ? { backgroundColor: hexToRgba(clientColor, 0.1) } : undefined}
+                style={hasWork && primaryColor ? { backgroundColor: hexToRgba(primaryColor, 0.1) } : undefined}
                 onClick={() => {
                   if (!day.otherMonth && !draggedWorkLog) {
                     setSelectedDate(dateStr);
@@ -165,27 +162,41 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
                     setDraggedWorkLog(null);
                   }
                 }}
-                aria-label={`${day.date.getDate()} ${currentMonth.toLocaleString('it-IT', { month: 'long' })}${hasWork ? `, ${previewText}` : ''}`}
+                aria-label={`${day.date.getDate()} ${currentMonth.toLocaleString('it-IT', { month: 'long' })}${hasWork ? `, ${clientData.map(c => `${c.cliente.nome}: ${c.total}`).join(', ')}` : ''}`}
                 aria-current={dateStr === today ? 'date' : undefined}
               >
-                {hasWork && clientColor && <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: clientColor, position: 'absolute', top: 6, right: 6 }} aria-hidden="true" />}
+                {hasWork && clientData.length > 0 && (
+                  <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 2 }} aria-hidden="true">
+                    {clientData.map(({ cliente }) => (
+                      <div key={cliente.id} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: getClientDisplayColor(cliente, cliente.id) }} />
+                    ))}
+                  </div>
+                )}
                 <div className="calendar-day-number" aria-hidden="true">{day.date.getDate()}</div>
-                {hasWork && primaryClientId && clientColor && (
-                  <div
-                    className="calendar-day-preview"
-                    aria-hidden="true"
-                    style={{ color: clientColor, cursor: 'grab' }}
-                    draggable
-                    onDragStart={(e) => {
-                      const mainLog = dayLogs.find(l => l.clienteId === primaryClientId);
-                      if (mainLog) {
-                        setDraggedWorkLog(mainLog);
-                        e.dataTransfer.effectAllowed = 'move';
-                      }
-                    }}
-                    onDragEnd={() => setDraggedWorkLog(null)}
-                  >
-                    {previewText}
+                {hasWork && clientData.length > 0 && (
+                  <div className="calendar-day-preview" aria-hidden="true" style={{ width: '100%', overflow: 'hidden' }}>
+                    {clientData.map(({ cliente, total, tipo, logs }) => {
+                      const color = getClientDisplayColor(cliente, cliente.id);
+                      const unit = tipo === 'giornata' ? 'gg' : 'h';
+                      return (
+                        <div
+                          key={cliente.id}
+                          style={{ color, fontSize: '0.65rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'grab', lineHeight: 1.3 }}
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            const mainLog = logs[0];
+                            if (mainLog) {
+                              setDraggedWorkLog(mainLog);
+                              e.dataTransfer.effectAllowed = 'move';
+                            }
+                          }}
+                          onDragEnd={() => setDraggedWorkLog(null)}
+                        >
+                          {cliente.nome.substring(0, 10)}{cliente.nome.length > 10 ? '..' : ''} {total.toFixed(1)}{unit}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

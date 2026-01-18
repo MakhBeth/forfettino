@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, FileArchive, Loader } from 'lucide-react';
 
 interface UploadZipModalProps {
@@ -9,8 +9,17 @@ interface UploadZipModalProps {
 
 export function UploadZipModal({ isOpen, onClose, onUpload }: UploadZipModalProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -24,9 +33,12 @@ export function UploadZipModal({ isOpen, onClose, onUpload }: UploadZipModalProp
     }
   };
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
+    if (e.target === dialogRef.current) onClose();
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="upload-zip-title" onClick={e => e.stopPropagation()}>
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleBackdropClick} aria-labelledby="upload-zip-title">
         <div className="modal-header">
           <h3 id="upload-zip-title" className="modal-title">Carica File ZIP</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>
@@ -54,7 +66,6 @@ export function UploadZipModal({ isOpen, onClose, onUpload }: UploadZipModalProp
             </p>
           </label>
         )}
-      </div>
-    </div>
+    </dialog>
   );
 }

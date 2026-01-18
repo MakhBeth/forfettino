@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { X, Check } from 'lucide-react';
 import type { Cliente } from '../../types';
 
@@ -10,11 +11,24 @@ interface AddClienteModalProps {
 }
 
 export function AddClienteModal({ isOpen, onClose, newCliente, setNewCliente, onAdd }: AddClienteModalProps) {
-  if (!isOpen) return null;
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
+    if (e.target === dialogRef.current) onClose();
+  };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="add-cliente-title" onClick={e => e.stopPropagation()}>
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleBackdropClick} aria-labelledby="add-cliente-title">
         <div className="modal-header">
           <h3 id="add-cliente-title" className="modal-title">Nuovo Cliente</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>
@@ -44,7 +58,6 @@ export function AddClienteModal({ isOpen, onClose, newCliente, setNewCliente, on
           </div>
         </div>
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={onAdd}><Check size={18} /> Aggiungi</button>
-      </div>
-    </div>
+    </dialog>
   );
 }

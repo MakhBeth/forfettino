@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { X, Check } from 'lucide-react';
 import type { Cliente } from '../../types';
 
@@ -10,11 +11,26 @@ interface EditClienteModalProps {
 }
 
 export function EditClienteModal({ isOpen, onClose, cliente, setCliente, onUpdate }: EditClienteModalProps) {
-  if (!isOpen || !cliente) return null;
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
+    if (e.target === dialogRef.current) onClose();
+  };
+
+  if (!cliente) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="edit-cliente-title" onClick={e => e.stopPropagation()}>
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleBackdropClick} aria-labelledby="edit-cliente-title">
         <div className="modal-header">
           <h3 id="edit-cliente-title" className="modal-title">Modifica Cliente</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>
@@ -73,7 +89,6 @@ export function EditClienteModal({ isOpen, onClose, cliente, setCliente, onUpdat
           </div>
         </div>
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={onUpdate}><Check size={18} /> Salva</button>
-      </div>
-    </div>
+    </dialog>
   );
 }

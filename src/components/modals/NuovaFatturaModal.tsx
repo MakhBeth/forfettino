@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { X, Download, Plus, Trash2, AlertTriangle, Upload } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { generateFatturaXML, downloadXML, generateFileName, parseFatturaXMLForEdit } from '../../lib/xml/generator';
@@ -12,6 +12,17 @@ interface NuovaFatturaModalProps {
 export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
   const { config, clienti, fatture, showToast, addFattura, addCliente } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
 
   // Form state
   const [clienteId, setClienteId] = useState<string>('');
@@ -278,18 +289,19 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
     onClose();
   };
 
-  if (!isOpen) return null;
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
+    if (e.target === dialogRef.current) handleClose();
+  };
 
   return (
-    <div className="modal-overlay" onClick={handleClose}>
-      <div
-        className="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="nuova-fattura-title"
-        onClick={e => e.stopPropagation()}
-        style={{ maxWidth: 700, maxHeight: '90vh', overflow: 'auto' }}
-      >
+    <dialog
+      ref={dialogRef}
+      className="modal"
+      onClose={handleClose}
+      onClick={handleBackdropClick}
+      aria-labelledby="nuova-fattura-title"
+      style={{ maxWidth: 700 }}
+    >
         <div className="modal-header">
           <h3 id="nuova-fattura-title" className="modal-title">Nuova Fattura XML</h3>
           <button className="close-btn" onClick={handleClose} aria-label="Chiudi">
@@ -584,7 +596,6 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
         >
           <Download size={18} aria-hidden="true" /> Genera XML
         </button>
-      </div>
-    </div>
+    </dialog>
   );
 }
