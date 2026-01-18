@@ -1,42 +1,57 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useLayoutEffect, useRef, useCallback } from 'react';
 
 export function useDialog(isOpen: boolean, onClose: () => void) {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const triggerRef = useRef<Element | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const previousIsOpen = useRef(false);
 
-  useEffect(() => {
+  // Capture trigger element BEFORE dialog opens
+  useLayoutEffect(() => {
+    if (isOpen && !previousIsOpen.current) {
+      // Opening: save current focus
+      triggerRef.current = document.activeElement as HTMLElement;
+    }
+    previousIsOpen.current = isOpen;
+  }, [isOpen]);
+
+  useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
     if (isOpen && !dialog.open) {
-      // Save trigger element for focus restoration
-      triggerRef.current = document.activeElement;
       dialog.showModal();
 
-      // Focus first focusable element
-      const focusable = dialog.querySelector<HTMLElement>(
-        'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      // Focus first visible focusable element
+      const focusables = dialog.querySelectorAll<HTMLElement>(
+        'input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex]:not([tabindex="-1"]), label[tabindex], .upload-zone'
       );
-      if (focusable) {
-        focusable.focus();
+
+      for (const el of focusables) {
+        // Check if element is visible
+        const style = window.getComputedStyle(el);
+        if (style.display !== 'none' && style.visibility !== 'hidden') {
+          el.focus();
+          break;
+        }
       }
     } else if (!isOpen && dialog.open) {
       dialog.close();
 
       // Restore focus to trigger
-      if (triggerRef.current instanceof HTMLElement) {
-        triggerRef.current.focus();
-      }
-      triggerRef.current = null;
+      requestAnimationFrame(() => {
+        if (triggerRef.current && document.body.contains(triggerRef.current)) {
+          triggerRef.current.focus();
+        }
+        triggerRef.current = null;
+      });
     }
   }, [isOpen]);
 
-  // Handle backdrop click - only close if click is directly on dialog (backdrop area)
+  // Handle backdrop click
   const handleClick = useCallback((e: React.MouseEvent<HTMLDialogElement>) => {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
-    // Get click position relative to dialog
     const rect = dialog.getBoundingClientRect();
     const clickedInDialog = (
       e.clientX >= rect.left &&
@@ -45,7 +60,6 @@ export function useDialog(isOpen: boolean, onClose: () => void) {
       e.clientY <= rect.bottom
     );
 
-    // Only close if clicked outside the dialog content (on backdrop)
     if (!clickedInDialog) {
       onClose();
     }

@@ -18,7 +18,7 @@ export function UploadFatturaModal({ isOpen, onClose, onUpload }: UploadFatturaM
           <h3 id="upload-fattura-title" className="modal-title">Carica Fattura XML</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>
         </div>
-        <label className="upload-zone">
+        <label className="upload-zone" tabIndex={0}>
           <input type="file" accept=".xml" onChange={onUpload} style={{ display: 'none' }} />
           <Upload size={40} style={{ marginBottom: 16, color: 'var(--accent-primary)' }} />
           <p style={{ fontWeight: 500 }}>Clicca per caricare</p>

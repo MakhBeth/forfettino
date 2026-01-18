@@ -38,7 +38,7 @@ export function UploadZipModal({ isOpen, onClose, onUpload }: UploadZipModalProp
             <p style={{ fontWeight: 500 }}>Importazione in corso...</p>
           </div>
         ) : (
-          <label className="upload-zone">
+          <label className="upload-zone" tabIndex={0}>
             <input
               type="file"
               accept=".zip"
