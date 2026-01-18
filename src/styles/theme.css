@@ -246,6 +246,9 @@ select.input-field option {
 .table th[style*="cursor: pointer"]:hover { color: var(--accent-primary); background: var(--bg-hover); }
 .table th button { background: none; border: none; color: inherit; font: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 4px; }
 .table th button:focus-visible { outline: 2px solid var(--accent-secondary); outline-offset: 2px; }
+.sortable-header { background: none; border: none; color: inherit; font: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 6px; transition: color 0.2s; }
+.sortable-header:hover { color: var(--accent-primary); }
+.sortable-header:focus-visible { outline: 2px solid var(--accent-secondary); outline-offset: 2px; border-radius: 4px; }
 .table td { padding: 16px 12px; border-bottom: 1px solid var(--border); }
 .table tr:hover { background: var(--bg-hover); }
 

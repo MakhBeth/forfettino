@@ -47,7 +47,29 @@ export function EditClienteModal({ isOpen, onClose, cliente, setCliente, onUpdat
           <label className="input-label">Data Inizio Fatturazione</label>
           <input type="date" className="input-field" value={cliente.billingStartDate || ''} onChange={(e) => setCliente({ ...cliente, billingStartDate: e.target.value })} />
           <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            💡 Il riepilogo mensile includerà solo le attività da questa data in poi
+            Il riepilogo mensile includerà solo le attività da questa data in poi
+          </div>
+        </div>
+        <div className="input-group">
+          <label className="input-label">Colore Calendario</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="color"
+              value={cliente.color || '#10b981'}
+              onChange={(e) => setCliente({ ...cliente, color: e.target.value })}
+              style={{ width: 48, height: 36, padding: 2, border: '1px solid var(--border-color)', borderRadius: 6, cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'Space Mono' }}>{cliente.color || '#10b981'}</span>
+            {cliente.color && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ padding: '4px 8px', fontSize: '0.75rem' }}
+                onClick={() => setCliente({ ...cliente, color: undefined })}
+              >
+                Reset
+              </button>
+            )}
           </div>
         </div>
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={onUpdate}><Check size={18} /> Salva</button>

@@ -1,18 +1,53 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, ArrowUpDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getCalendarDays, formatDate } from '../../lib/utils/dateHelpers';
 import { getClientColor } from '../../lib/utils/colorUtils';
 import { getWorkLogQuantita } from '../../lib/utils/calculations';
+import type { Cliente } from '../../types';
+
+// Helper to get client color (custom or generated)
+const getClientDisplayColor = (cliente: Cliente | undefined, clientId: string): string => {
+  if (cliente?.color) return cliente.color;
+  return getClientColor(clientId);
+};
+
+// Helper to convert hex to rgba
+const hexToRgba = (hex: string, alpha: number): string => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 interface CalendarioProps {
   setShowModal: (modal: string | null) => void;
   setSelectedDate: (date: string) => void;
 }
 
+type RecapSortField = 'cliente' | 'quantita' | 'tariffa' | 'totale';
+type ActivitySortField = 'data' | 'cliente' | 'durata';
+type SortDirection = 'asc' | 'desc';
+
 export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
   const { clienti, workLogs, removeWorkLog } = useApp();
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
+  const [recapSort, setRecapSort] = useState<{ field: RecapSortField; direction: SortDirection }>({ field: 'totale', direction: 'desc' });
+  const [activitySort, setActivitySort] = useState<{ field: ActivitySortField; direction: SortDirection }>({ field: 'data', direction: 'desc' });
+
+  const toggleRecapSort = (field: RecapSortField) => {
+    setRecapSort(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
+  const toggleActivitySort = (field: ActivitySortField) => {
+    setActivitySort(prev => ({
+      field,
+      direction: prev.field === field && prev.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
 
   const today = formatDate(new Date());
   const days = getCalendarDays(currentMonth);
@@ -76,6 +111,7 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
 
             let previewText = '';
             let primaryClientId: string | null = null;
+            let primaryClient: Cliente | undefined = undefined;
             if (hasWork) {
               const clientHours: Record<string, number> = {};
               dayLogs.forEach(log => {
@@ -85,7 +121,7 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
               primaryClientId = Object.keys(clientHours).reduce((a, b) =>
                 clientHours[a] > clientHours[b] ? a : b
               );
-              const primaryClient = clienti.find(c => c.id === primaryClientId!);
+              primaryClient = clienti.find(c => c.id === primaryClientId!);
               if (primaryClient) {
                 const clientName = primaryClient.nome.length > 15
                   ? primaryClient.nome.substring(0, 12) + '...'
@@ -97,11 +133,14 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
               }
             }
 
+            const clientColor = primaryClientId ? getClientDisplayColor(primaryClient, primaryClientId) : null;
+
             return (
               <button
                 type="button"
                 key={i}
                 className={`calendar-day ${day.otherMonth ? 'other-month' : ''} ${dateStr === today ? 'today' : ''} ${isWeekendDay ? 'weekend' : ''} ${hasWork ? 'has-work' : ''}`}
+                style={hasWork && clientColor ? { backgroundColor: hexToRgba(clientColor, 0.1) } : undefined}
                 onClick={() => {
                   if (!day.otherMonth) {
                     setSelectedDate(dateStr);
@@ -113,7 +152,7 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
                 aria-current={dateStr === today ? 'date' : undefined}
               >
                 <div className="calendar-day-number" aria-hidden="true">{day.date.getDate()}</div>
-                {hasWork && primaryClientId && <div className="calendar-day-preview" aria-hidden="true" style={{ color: getClientColor(primaryClientId) }}>{previewText}</div>}
+                {hasWork && primaryClientId && clientColor && <div className="calendar-day-preview" aria-hidden="true" style={{ color: clientColor }}>{previewText}</div>}
               </button>
             );
           })}
@@ -127,14 +166,39 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
           <table className="table">
             <thead>
               <tr>
-                <th scope="col">Cliente</th>
-                <th scope="col">Quantità</th>
-                <th scope="col">Tariffa</th>
-                <th scope="col">Totale</th>
+                <th scope="col">
+                  <button type="button" className="sortable-header" onClick={() => toggleRecapSort('cliente')}>
+                    Cliente <ArrowUpDown size={14} style={{ opacity: recapSort.field === 'cliente' ? 1 : 0.3 }} />
+                  </button>
+                </th>
+                <th scope="col">
+                  <button type="button" className="sortable-header" onClick={() => toggleRecapSort('quantita')}>
+                    Quantità <ArrowUpDown size={14} style={{ opacity: recapSort.field === 'quantita' ? 1 : 0.3 }} />
+                  </button>
+                </th>
+                <th scope="col">
+                  <button type="button" className="sortable-header" onClick={() => toggleRecapSort('tariffa')}>
+                    Tariffa <ArrowUpDown size={14} style={{ opacity: recapSort.field === 'tariffa' ? 1 : 0.3 }} />
+                  </button>
+                </th>
+                <th scope="col">
+                  <button type="button" className="sortable-header" onClick={() => toggleRecapSort('totale')}>
+                    Totale <ArrowUpDown size={14} style={{ opacity: recapSort.field === 'totale' ? 1 : 0.3 }} />
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {recapData.map(({ cliente, totalQuantita, amount, unit }) => (
+              {[...recapData].sort((a, b) => {
+                const dir = recapSort.direction === 'asc' ? 1 : -1;
+                switch (recapSort.field) {
+                  case 'cliente': return dir * a.cliente.nome.localeCompare(b.cliente.nome);
+                  case 'quantita': return dir * (a.totalQuantita - b.totalQuantita);
+                  case 'tariffa': return dir * ((a.cliente.rate || 0) - (b.cliente.rate || 0));
+                  case 'totale': return dir * ((a.amount || 0) - (b.amount || 0));
+                  default: return 0;
+                }
+              }).map(({ cliente, totalQuantita, amount, unit }) => (
                 <tr key={cliente.id}>
                   <td style={{ fontWeight: 500 }}>{cliente.nome}</td>
                   <td>
@@ -163,23 +227,55 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
       )}
 
       {workLogs.filter(w => {
-        const d = new Date(w.data);
+        const d = new Date(w.data + 'T12:00:00');
         return d.getMonth() === currentMonth.getMonth() && d.getFullYear() === currentMonth.getFullYear();
       }).length > 0 && (
         <div className="card">
           <h2 className="card-title">Attività del Mese</h2>
           <div className="table-wrapper">
           <table className="table">
-            <thead><tr><th scope="col">Data</th><th scope="col">Cliente</th><th scope="col">Durata</th><th scope="col">Note</th><th scope="col"></th></tr></thead>
+            <thead>
+              <tr>
+                <th scope="col">
+                  <button type="button" className="sortable-header" onClick={() => toggleActivitySort('data')}>
+                    Data <ArrowUpDown size={14} style={{ opacity: activitySort.field === 'data' ? 1 : 0.3 }} />
+                  </button>
+                </th>
+                <th scope="col">
+                  <button type="button" className="sortable-header" onClick={() => toggleActivitySort('cliente')}>
+                    Cliente <ArrowUpDown size={14} style={{ opacity: activitySort.field === 'cliente' ? 1 : 0.3 }} />
+                  </button>
+                </th>
+                <th scope="col">
+                  <button type="button" className="sortable-header" onClick={() => toggleActivitySort('durata')}>
+                    Durata <ArrowUpDown size={14} style={{ opacity: activitySort.field === 'durata' ? 1 : 0.3 }} />
+                  </button>
+                </th>
+                <th scope="col">Note</th>
+                <th scope="col"></th>
+              </tr>
+            </thead>
             <tbody>
               {workLogs.filter(w => {
-                const d = new Date(w.data);
+                const d = new Date(w.data + 'T12:00:00');
                 return d.getMonth() === currentMonth.getMonth() && d.getFullYear() === currentMonth.getFullYear();
               })
-                .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+                .sort((a, b) => {
+                  const dir = activitySort.direction === 'asc' ? 1 : -1;
+                  switch (activitySort.field) {
+                    case 'data': return dir * (new Date(a.data).getTime() - new Date(b.data).getTime());
+                    case 'cliente': {
+                      const clienteA = clienti.find(c => c.id === a.clienteId)?.nome || '';
+                      const clienteB = clienti.find(c => c.id === b.clienteId)?.nome || '';
+                      return dir * clienteA.localeCompare(clienteB);
+                    }
+                    case 'durata': return dir * (getWorkLogQuantita(a) - getWorkLogQuantita(b));
+                    default: return 0;
+                  }
+                })
                 .map(log => (
                   <tr key={log.id}>
-                    <td>{new Date(log.data).toLocaleDateString('it-IT')}</td>
+                    <td>{new Date(log.data + 'T12:00:00').toLocaleDateString('it-IT')}</td>
                     <td>{clienti.find(c => c.id === log.clienteId)?.nome || '-'}</td>
                     <td><span className="badge badge-green">{log.tipo === 'giornata' ? `${getWorkLogQuantita(log)} giornata` : `${getWorkLogQuantita(log)} ore`}</span></td>
                     <td style={{ color: 'var(--text-secondary)' }}>{log.note || '-'}</td>

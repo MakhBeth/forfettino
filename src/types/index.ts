@@ -10,6 +10,7 @@ export interface Cliente {
   billingUnit?: 'ore' | 'giornata';
   rate?: number;
   billingStartDate?: string; // YYYY-MM-DD
+  color?: string; // Hex color for calendar display
 }
 
 export interface Fattura {

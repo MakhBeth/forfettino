@@ -31,6 +31,18 @@ export function AddClienteModal({ isOpen, onClose, newCliente, setNewCliente, on
           <label className="input-label">Email</label>
           <input type="email" className="input-field" value={newCliente.email || ''} onChange={(e) => setNewCliente({ ...newCliente, email: e.target.value })} />
         </div>
+        <div className="input-group">
+          <label className="input-label">Colore Calendario</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <input
+              type="color"
+              value={newCliente.color || '#10b981'}
+              onChange={(e) => setNewCliente({ ...newCliente, color: e.target.value })}
+              style={{ width: 48, height: 36, padding: 2, border: '1px solid var(--border-color)', borderRadius: 6, cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'Space Mono' }}>{newCliente.color || '#10b981'}</span>
+          </div>
+        </div>
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={onAdd}><Check size={18} /> Aggiungi</button>
       </div>
     </div>
