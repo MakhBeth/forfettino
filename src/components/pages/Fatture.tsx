@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, FileText, Trash2, Edit, FileArchive, FilePlus, ExternalLink } from 'lucide-react';
+import { Upload, FileText, Trash2, Edit, FileArchive, FilePlus, Landmark, ChevronDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import type { Fattura } from '../../types';
 
@@ -78,45 +78,86 @@ export function FatturePage({ setShowModal, setEditingFattura }: FattureProps) {
 
   return (
     <>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <h1 className="page-title">Fatture</h1>
-          <p className="page-subtitle">Gestisci le tue fatture elettroniche</p>
+      <div className="page-header" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+          <div>
+            <h1 className="page-title">Fatture</h1>
+            <p className="page-subtitle">Gestisci le tue fatture elettroniche</p>
+          </div>
+          <div style={{ position: 'relative' }}>
+            <select
+              className="input-field"
+              value={filtroAnnoFatture}
+              onChange={(e) => setFiltroAnnoFatture(e.target.value)}
+              style={{
+                width: 'auto',
+                padding: '10px 36px 10px 14px',
+                fontWeight: 500,
+                appearance: 'none',
+                cursor: 'pointer',
+                minWidth: 160
+              }}
+              aria-label="Filtra fatture"
+            >
+              <option value="tutte">Tutte le fatture</option>
+              {anniDisponibili.map(anno => (
+                <option key={anno} value={anno}>Anno {anno}</option>
+              ))}
+            </select>
+            <ChevronDown
+              size={18}
+              style={{
+                position: 'absolute',
+                right: 12,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                pointerEvents: 'none',
+                color: 'var(--text-secondary)'
+              }}
+              aria-hidden="true"
+            />
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <select
-            className="input-field"
-            value={filtroAnnoFatture}
-            onChange={(e) => setFiltroAnnoFatture(e.target.value)}
-            style={{ width: 'auto', padding: '8px 12px' }}
-            aria-label="Filtra fatture"
-          >
-            <option value="tutte">Tutte le fatture</option>
-            {anniDisponibili.map(anno => (
-              <option key={anno} value={anno}>Anno {anno}</option>
-            ))}
-          </select>
-          <button className="btn btn-success" onClick={() => setShowModal('nuova-fattura')}>
-            <FilePlus size={18} aria-hidden="true" /> Nuova Fattura
-          </button>
-          <button className="btn btn-primary" onClick={() => setShowModal('upload-fattura')}>
-            <Upload size={18} aria-hidden="true" /> Carica XML
-          </button>
-          <button className="btn btn-primary" onClick={() => setShowModal('batch-upload-fattura')}>
-            <FileText size={18} aria-hidden="true" /> Batch Import
-          </button>
-          <button className="btn btn-primary" onClick={() => setShowModal('upload-zip')}>
-            <FileArchive size={18} aria-hidden="true" /> Carica ZIP
-          </button>
-          <a
-            href="https://ivaservizi.agenziaentrate.gov.it/portale/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-secondary"
-            style={{ textDecoration: 'none' }}
-          >
-            <ExternalLink size={18} aria-hidden="true" /> Portale ADE
-          </a>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <button className="btn btn-success" onClick={() => setShowModal('nuova-fattura')}>
+              <FilePlus size={18} aria-hidden="true" /> Nuova Fattura
+            </button>
+            <button className="btn btn-primary" onClick={() => setShowModal('upload-fattura')}>
+              <Upload size={18} aria-hidden="true" /> Carica XML
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => setShowModal('batch-upload-fattura')}
+              title="Batch Import"
+              aria-label="Batch Import"
+              style={{ padding: '10px' }}
+            >
+              <FileText size={18} aria-hidden="true" />
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => setShowModal('upload-zip')}
+              title="Carica ZIP"
+              aria-label="Carica ZIP"
+              style={{ padding: '10px' }}
+            >
+              <FileArchive size={18} aria-hidden="true" />
+            </button>
+            <a
+              href="https://ivaservizi.agenziaentrate.gov.it/portale/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary"
+              title="Portale Agenzia delle Entrate"
+              aria-label="Portale Agenzia delle Entrate"
+              style={{ textDecoration: 'none', padding: '10px' }}
+            >
+              <Landmark size={18} aria-hidden="true" />
+            </a>
+          </div>
         </div>
       </div>
 
