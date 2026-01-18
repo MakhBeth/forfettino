@@ -58,29 +58,28 @@ export default defineConfig({
   build: {
     modulePreload: {
       resolveDependencies: (filename, deps) => {
-        // Don't preload heavy chunks
-        return deps.filter(dep => !dep.includes('vendor-pdf') && !dep.includes('vendor-zip'));
+        // Don't preload heavy PDF-related chunks
+        return deps.filter(dep =>
+          !dep.includes('react-pdf') &&
+          !dep.includes('FatturaCortesia') &&
+          !dep.includes('CourtesyInvoice') &&
+          !dep.includes('renderer')
+        );
       },
     },
     rollupOptions: {
       output: {
         manualChunks: (id) => {
-          // React core - must come first to avoid being pulled into other chunks
+          // React core
           if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
             return 'vendor-react';
-          }
-          // PDF library - isolated chunk, only loaded when needed
-          if (id.includes('@react-pdf/renderer') || id.includes('node_modules/@react-pdf/')) {
-            return 'vendor-pdf';
           }
           // Icons
           if (id.includes('lucide-react')) {
             return 'vendor-icons';
           }
-          // ZIP handling
-          if (id.includes('fflate')) {
-            return 'vendor-zip';
-          }
+          // Don't manually chunk @react-pdf - let Vite handle it with dynamic imports
+          // to avoid circular dependency issues
         },
       },
     },
