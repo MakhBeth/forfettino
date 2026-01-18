@@ -568,17 +568,17 @@ select.input-field option {
   }
 }
 
-/* Tooltip */
+/* Tooltip with CSS Anchor Positioning */
 .tooltip {
-  position: relative;
+  anchor-name: --tooltip-anchor;
 }
 
 .tooltip::after {
   content: attr(data-tooltip);
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
+  position-anchor: --tooltip-anchor;
+  inset-area: top;
+  margin-bottom: 8px;
   padding: 8px 12px;
   background: var(--bg-card);
   color: var(--text-primary);
@@ -593,29 +593,31 @@ select.input-field option {
   transition: opacity 0.15s ease, visibility 0.15s ease;
   pointer-events: none;
   z-index: 1000;
+  position-try-fallbacks: --tooltip-bottom, --tooltip-left, --tooltip-right;
+  position-visibility: anchors-visible;
 }
 
-.tooltip::before {
-  content: '';
-  position: absolute;
-  bottom: calc(100% + 2px);
-  left: 50%;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: var(--border);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.15s ease, visibility 0.15s ease;
-  pointer-events: none;
-  z-index: 1001;
+@position-try --tooltip-bottom {
+  inset-area: bottom;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+@position-try --tooltip-left {
+  inset-area: left;
+  margin-right: 8px;
+  margin-bottom: 0;
+}
+
+@position-try --tooltip-right {
+  inset-area: right;
+  margin-left: 8px;
+  margin-bottom: 0;
 }
 
 .tooltip:hover::after,
-.tooltip:hover::before,
 .tooltip:focus::after,
-.tooltip:focus::before,
-.tooltip:focus-visible::after,
-.tooltip:focus-visible::before {
+.tooltip:focus-visible::after {
   opacity: 1;
   visibility: visible;
 }
