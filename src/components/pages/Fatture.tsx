@@ -110,6 +110,7 @@ export function FatturePage({ setShowModal, setEditingFattura }: FattureProps) {
 
       <div className="card">
         {fatture.length > 0 ? (
+          <div className="table-wrapper">
           <table className="table">
             <thead>
               <tr>
@@ -175,6 +176,7 @@ export function FatturePage({ setShowModal, setEditingFattura }: FattureProps) {
               })}
             </tbody>
           </table>
+          </div>
         ) : (
           <div className="empty-state"><FileText size={48} aria-hidden="true" /><p>Nessuna fattura</p></div>
         )}
