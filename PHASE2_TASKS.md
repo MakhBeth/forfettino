@@ -12,7 +12,7 @@ Added "Fattura di Cortesia" (courtesy invoice) feature that converts FatturaPA X
 ### Features Implemented
 
 1. **Dedicated Page** (`/fattura-cortesia`)
-   - XML file upload for FatturaPA
+   - XML file upload with drag-and-drop support
    - Edit invoice data before generating (collapsible sections)
    - Language selector (IT/EN/DE)
    - Primary color customization
@@ -89,5 +89,5 @@ public/fonts/
 ## Next Steps
 
 - [x] Edit invoice data before generating
+- [x] Add drag-and-drop for XML upload
 - [ ] Add settings to override footer text and link
-- [ ] Add drag-and-drop for XML upload
