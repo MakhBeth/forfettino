@@ -485,6 +485,12 @@ select.input-field option {
   .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .backup-section { flex-direction: column; }
   .backup-section .btn { width: 100%; justify-content: center; }
+
+  /* Calendar responsive */
+  .calendar-grid { gap: 2px; }
+  .calendar-header { padding: 8px 2px; font-size: 0.7rem; }
+  .calendar-day { min-height: 50px; padding: 4px 2px; font-size: 0.8rem; }
+  .calendar-day-preview { display: none; }
 }
 
 @keyframes spin {
