@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { X, Check, AlertTriangle } from 'lucide-react';
 import type { ImportSummary } from '../../types';
 
@@ -8,11 +9,26 @@ interface ImportSummaryModalProps {
 }
 
 export function ImportSummaryModal({ isOpen, onClose, summary }: ImportSummaryModalProps) {
-  if (!isOpen || !summary) return null;
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
+    if (e.target === dialogRef.current) onClose();
+  };
+
+  if (!summary) return null;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="import-summary-title" onClick={e => e.stopPropagation()}>
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleBackdropClick} aria-labelledby="import-summary-title">
         <div className="modal-header">
           <h3 id="import-summary-title" className="modal-title">Riepilogo Importazione</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>
@@ -60,7 +76,6 @@ export function ImportSummaryModal({ isOpen, onClose, summary }: ImportSummaryMo
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={onClose}>
           <Check size={18} /> Chiudi
         </button>
-      </div>
-    </div>
+    </dialog>
   );
 }

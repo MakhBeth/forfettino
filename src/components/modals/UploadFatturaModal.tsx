@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { X, Upload } from 'lucide-react';
 
 interface UploadFatturaModalProps {
@@ -7,11 +8,24 @@ interface UploadFatturaModalProps {
 }
 
 export function UploadFatturaModal({ isOpen, onClose, onUpload }: UploadFatturaModalProps) {
-  if (!isOpen) return null;
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
+    if (e.target === dialogRef.current) onClose();
+  };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="upload-fattura-title" onClick={e => e.stopPropagation()}>
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleBackdropClick} aria-labelledby="upload-fattura-title">
         <div className="modal-header">
           <h3 id="upload-fattura-title" className="modal-title">Carica Fattura XML</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>
@@ -22,7 +36,6 @@ export function UploadFatturaModal({ isOpen, onClose, onUpload }: UploadFatturaM
           <p style={{ fontWeight: 500 }}>Clicca per caricare</p>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 8 }}>Formato: FatturaPA XML</p>
         </label>
-      </div>
-    </div>
+    </dialog>
   );
 }

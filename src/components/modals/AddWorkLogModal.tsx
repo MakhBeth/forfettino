@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { X, Check, Clock } from 'lucide-react';
 import type { WorkLog, Cliente } from '../../types';
 
@@ -12,11 +13,24 @@ interface AddWorkLogModalProps {
 }
 
 export function AddWorkLogModal({ isOpen, onClose, selectedDate, newWorkLog, setNewWorkLog, clienti, onAdd }: AddWorkLogModalProps) {
-  if (!isOpen) return null;
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
+    if (e.target === dialogRef.current) onClose();
+  };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="add-worklog-title" onClick={e => e.stopPropagation()}>
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleBackdropClick} aria-labelledby="add-worklog-title">
         <div className="modal-header">
           <h3 id="add-worklog-title" className="modal-title">Registra Lavoro</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>
@@ -75,7 +89,6 @@ export function AddWorkLogModal({ isOpen, onClose, selectedDate, newWorkLog, set
           );
         })()}
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={onAdd} disabled={!newWorkLog.clienteId || newWorkLog.quantita === undefined || newWorkLog.quantita === null}><Check size={18} /> Registra</button>
-      </div>
-    </div>
+    </dialog>
   );
 }

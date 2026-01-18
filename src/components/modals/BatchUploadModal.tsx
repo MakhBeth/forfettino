@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, FileText, Loader } from 'lucide-react';
 
 interface BatchUploadModalProps {
@@ -9,8 +9,17 @@ interface BatchUploadModalProps {
 
 export function BatchUploadModal({ isOpen, onClose, onUpload }: BatchUploadModalProps) {
   const [isUploading, setIsUploading] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -24,9 +33,12 @@ export function BatchUploadModal({ isOpen, onClose, onUpload }: BatchUploadModal
     }
   };
 
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
+    if (e.target === dialogRef.current) onClose();
+  };
+
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-labelledby="batch-upload-title" onClick={e => e.stopPropagation()}>
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleBackdropClick} aria-labelledby="batch-upload-title">
         <div className="modal-header">
           <h3 id="batch-upload-title" className="modal-title">Importa File XML Multipli</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>
@@ -55,7 +67,6 @@ export function BatchUploadModal({ isOpen, onClose, onUpload }: BatchUploadModal
             </p>
           </label>
         )}
-      </div>
-    </div>
+    </dialog>
   );
 }

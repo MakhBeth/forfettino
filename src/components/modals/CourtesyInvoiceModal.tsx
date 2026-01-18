@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Check, Plus, Trash2, Upload, FileText, Edit2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { parseXmlToInvoice, validateInvoice } from '../../lib/pdf/xmlParser';
@@ -14,6 +14,17 @@ interface CourtesyInvoiceModalProps {
 
 export function CourtesyInvoiceModal({ isOpen, onClose }: CourtesyInvoiceModalProps) {
   const { config, showToast } = useApp();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) {
+      dialog.showModal();
+    } else if (!isOpen && dialog.open) {
+      dialog.close();
+    }
+  }, [isOpen]);
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -166,18 +177,19 @@ export function CourtesyInvoiceModal({ isOpen, onClose }: CourtesyInvoiceModalPr
     setActiveTab('upload');
   };
 
-  if (!isOpen) return null;
+  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
+    if (e.target === dialogRef.current) onClose();
+  };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div
-        className="modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="courtesy-invoice-title"
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxWidth: 950, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
-      >
+    <dialog
+      ref={dialogRef}
+      className="modal"
+      onClose={onClose}
+      onClick={handleBackdropClick}
+      aria-labelledby="courtesy-invoice-title"
+      style={{ maxWidth: 950, maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+    >
         <div className="modal-header">
           <h3 id="courtesy-invoice-title" className="modal-title">Genera Fattura di Cortesia</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi">
@@ -267,8 +279,7 @@ export function CourtesyInvoiceModal({ isOpen, onClose }: CourtesyInvoiceModalPr
             </button>
           </div>
         )}
-      </div>
-    </div>
+    </dialog>
   );
 }
 
