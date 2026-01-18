@@ -42,10 +42,7 @@ function ForfettarioAppInner() {
   const [editingWorkLog, setEditingWorkLog] = useState<WorkLog | null>(null);
 
   // Upload handlers
-  const handleFatturaUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleFatturaUpload = async (file: File) => {
     const text = await file.text();
     const parsed = parseFatturaXML(text);
     if (parsed) {
@@ -132,10 +129,7 @@ function ForfettarioAppInner() {
     }
   };
 
-  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleZipUpload = async (file: File) => {
     try {
       const xmlFiles = await extractXmlFromZip(file);
       if (xmlFiles.length === 0) {
@@ -177,10 +171,7 @@ function ForfettarioAppInner() {
     }
   };
 
-  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const handleImport = async (file: File) => {
     try {
       const text = await file.text();
       const data = JSON.parse(text);

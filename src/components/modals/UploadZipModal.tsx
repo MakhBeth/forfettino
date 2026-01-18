@@ -1,27 +1,38 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X, FileArchive, Loader } from 'lucide-react';
 import { useDialog } from '../../hooks/useDialog';
+import { useFileDrop } from '../../hooks/useFileDrop';
 
 interface UploadZipModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void> | void;
+  onUpload: (file: File) => Promise<void> | void;
 }
 
 export function UploadZipModal({ isOpen, onClose, onUpload }: UploadZipModalProps) {
   const [isUploading, setIsUploading] = useState(false);
   const { dialogRef, handleClick } = useDialog(isOpen, onClose);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setIsUploading(true);
-      try {
-        await onUpload(e);
-      } finally {
-        setIsUploading(false);
-        e.target.value = '';
-      }
+  const processFile = useCallback(async (file: File) => {
+    setIsUploading(true);
+    try {
+      await onUpload(file);
+    } finally {
+      setIsUploading(false);
     }
+  }, [onUpload]);
+
+  const handleFiles = useCallback((files: FileList) => {
+    const file = files[0];
+    if (file) processFile(file);
+  }, [processFile]);
+
+  const { isDragging, dragProps } = useFileDrop(handleFiles);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+    e.target.value = '';
   };
 
   if (!isOpen) return null;
@@ -38,20 +49,12 @@ export function UploadZipModal({ isOpen, onClose, onUpload }: UploadZipModalProp
             <p style={{ fontWeight: 500 }}>Importazione in corso...</p>
           </div>
         ) : (
-          <label className="upload-zone" tabIndex={0}>
-            <input
-              type="file"
-              accept=".zip"
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
+          <label className={`upload-zone ${isDragging ? 'dragging' : ''}`} tabIndex={0} {...dragProps}>
+            <input type="file" accept=".zip" onChange={handleChange} style={{ display: 'none' }} />
             <FileArchive size={40} style={{ marginBottom: 16, color: 'var(--accent-primary)' }} />
-            <p style={{ fontWeight: 500 }}>Clicca per caricare un file ZIP</p>
+            <p style={{ fontWeight: 500 }}>{isDragging ? 'Rilascia qui' : 'Clicca o trascina ZIP'}</p>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 8 }}>
               Il file ZIP verrà estratto e tutti gli XML saranno importati
-            </p>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
-              I duplicati (stesso numero, data e importo) saranno saltati
             </p>
           </label>
         )}

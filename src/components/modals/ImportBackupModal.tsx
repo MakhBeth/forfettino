@@ -1,14 +1,28 @@
+import { useCallback } from 'react';
 import { X, Upload, AlertTriangle } from 'lucide-react';
 import { useDialog } from '../../hooks/useDialog';
+import { useFileDrop } from '../../hooks/useFileDrop';
 
 interface ImportBackupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onImport: (file: File) => void;
 }
 
 export function ImportBackupModal({ isOpen, onClose, onImport }: ImportBackupModalProps) {
   const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+
+  const handleFiles = useCallback((files: FileList) => {
+    const file = files[0];
+    if (file) onImport(file);
+  }, [onImport]);
+
+  const { isDragging, dragProps } = useFileDrop(handleFiles);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) onImport(file);
+  };
 
   if (!isOpen) return null;
 
@@ -24,10 +38,10 @@ export function ImportBackupModal({ isOpen, onClose, onImport }: ImportBackupMod
           </div>
           <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>L'import sovrascrive tutti i dati esistenti!</p>
         </div>
-        <label className="upload-zone" tabIndex={0}>
-          <input type="file" accept=".json" onChange={onImport} style={{ display: 'none' }} />
+        <label className={`upload-zone ${isDragging ? 'dragging' : ''}`} tabIndex={0} {...dragProps}>
+          <input type="file" accept=".json" onChange={handleChange} style={{ display: 'none' }} />
           <Upload size={40} style={{ marginBottom: 16, color: 'var(--accent-primary)' }} />
-          <p style={{ fontWeight: 500 }}>Seleziona JSON</p>
+          <p style={{ fontWeight: 500 }}>{isDragging ? 'Rilascia qui' : 'Seleziona o trascina JSON'}</p>
         </label>
     </dialog>
   );

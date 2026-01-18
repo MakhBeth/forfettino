@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { X, FileText, Loader } from 'lucide-react';
 import { useDialog } from '../../hooks/useDialog';
+import { useFileDrop } from '../../hooks/useFileDrop';
 
 interface BatchUploadModalProps {
   isOpen: boolean;
@@ -12,16 +13,22 @@ export function BatchUploadModal({ isOpen, onClose, onUpload }: BatchUploadModal
   const [isUploading, setIsUploading] = useState(false);
   const { dialogRef, handleClick } = useDialog(isOpen, onClose);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setIsUploading(true);
-      try {
-        await onUpload(e.target.files);
-      } finally {
-        setIsUploading(false);
-        e.target.value = '';
-      }
+  const processFiles = useCallback(async (files: FileList) => {
+    setIsUploading(true);
+    try {
+      await onUpload(files);
+    } finally {
+      setIsUploading(false);
     }
+  }, [onUpload]);
+
+  const { isDragging, dragProps } = useFileDrop(processFiles);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      processFiles(e.target.files);
+    }
+    e.target.value = '';
   };
 
   if (!isOpen) return null;
@@ -38,21 +45,12 @@ export function BatchUploadModal({ isOpen, onClose, onUpload }: BatchUploadModal
             <p style={{ fontWeight: 500 }}>Importazione in corso...</p>
           </div>
         ) : (
-          <label className="upload-zone" tabIndex={0}>
-            <input
-              type="file"
-              accept=".xml"
-              multiple
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
+          <label className={`upload-zone ${isDragging ? 'dragging' : ''}`} tabIndex={0} {...dragProps}>
+            <input type="file" accept=".xml" multiple onChange={handleChange} style={{ display: 'none' }} />
             <FileText size={40} style={{ marginBottom: 16, color: 'var(--accent-primary)' }} />
-            <p style={{ fontWeight: 500 }}>Clicca per selezionare file XML multipli</p>
+            <p style={{ fontWeight: 500 }}>{isDragging ? 'Rilascia qui' : 'Clicca o trascina XML'}</p>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 8 }}>
               Puoi selezionare più file XML contemporaneamente
-            </p>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
-              I duplicati (stesso numero, data e importo) saranno saltati
             </p>
           </label>
         )}
