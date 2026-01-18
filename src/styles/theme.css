@@ -225,7 +225,7 @@ select.input-field option {
 .table td { padding: 16px 12px; border-bottom: 1px solid var(--border); }
 .table tr:hover { background: var(--bg-hover); }
 
-.badge { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
+.badge { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; white-space: nowrap; }
 .badge-green { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
 
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
