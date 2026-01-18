@@ -123,6 +123,7 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
       {recapData.length > 0 && (
         <div className="card">
           <h2 className="card-title">Riepilogo Mensile Fatturazione</h2>
+          <div className="table-wrapper">
           <table className="table">
             <thead>
               <tr>
@@ -157,6 +158,7 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -166,6 +168,7 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
       }).length > 0 && (
         <div className="card">
           <h2 className="card-title">Attività del Mese</h2>
+          <div className="table-wrapper">
           <table className="table">
             <thead><tr><th scope="col">Data</th><th scope="col">Cliente</th><th scope="col">Durata</th><th scope="col">Note</th><th scope="col"></th></tr></thead>
             <tbody>
@@ -185,6 +188,7 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
                 ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </>

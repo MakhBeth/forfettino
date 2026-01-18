@@ -137,7 +137,8 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
           <button className="btn btn-primary" onClick={() => setShowModal('add-cliente')}><Plus size={18} aria-hidden="true" /> Aggiungi</button>
         </div>
         {clienti.length > 0 ? (
-          <table className="table" style={{ marginTop: 16 }}>
+          <div className="table-wrapper" style={{ marginTop: 16 }}>
+          <table className="table">
             <thead><tr><th scope="col">Nome</th><th scope="col">P.IVA</th><th scope="col">Email</th><th scope="col">Tariffa</th><th scope="col"></th></tr></thead>
             <tbody>
               {clienti.map(c => (
@@ -156,6 +157,7 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
               ))}
             </tbody>
           </table>
+          </div>
         ) : <div className="empty-state"><Users size={40} aria-hidden="true" /><p>Nessun cliente</p></div>}
       </div>
     </>

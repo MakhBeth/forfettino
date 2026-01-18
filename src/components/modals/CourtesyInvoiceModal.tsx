@@ -539,6 +539,7 @@ function LinesEditor({
             </button>
           </div>
 
+          <div className="table-wrapper">
           <table className="table">
             <thead>
               <tr>
@@ -626,6 +627,7 @@ function LinesEditor({
               ))}
             </tbody>
           </table>
+          </div>
 
           {/* Totals */}
           <div
