@@ -113,32 +113,32 @@ export function FatturePage({ setShowModal, setEditingFattura }: FattureProps) {
           <table className="table">
             <thead>
               <tr>
-                <th aria-sort={ordinamentoFatture.campo === 'numero' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
+                <th scope="col" aria-sort={ordinamentoFatture.campo === 'numero' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
                   <button type="button" onClick={() => handleSort('numero')}>
                     Numero {ordinamentoFatture.campo === 'numero' && (ordinamentoFatture.direzione === 'asc' ? '↑' : '↓')}
                   </button>
                 </th>
-                <th aria-sort={ordinamentoFatture.campo === 'data' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
+                <th scope="col" aria-sort={ordinamentoFatture.campo === 'data' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
                   <button type="button" onClick={() => handleSort('data')}>
                     Data Emissione {ordinamentoFatture.campo === 'data' && (ordinamentoFatture.direzione === 'asc' ? '↑' : '↓')}
                   </button>
                 </th>
-                <th aria-sort={ordinamentoFatture.campo === 'dataIncasso' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
+                <th scope="col" aria-sort={ordinamentoFatture.campo === 'dataIncasso' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
                   <button type="button" onClick={() => handleSort('dataIncasso')}>
                     Data Incasso {ordinamentoFatture.campo === 'dataIncasso' && (ordinamentoFatture.direzione === 'asc' ? '↑' : '↓')}
                   </button>
                 </th>
-                <th aria-sort={ordinamentoFatture.campo === 'clienteNome' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
+                <th scope="col" aria-sort={ordinamentoFatture.campo === 'clienteNome' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
                   <button type="button" onClick={() => handleSort('clienteNome')}>
                     Cliente {ordinamentoFatture.campo === 'clienteNome' && (ordinamentoFatture.direzione === 'asc' ? '↑' : '↓')}
                   </button>
                 </th>
-                <th aria-sort={ordinamentoFatture.campo === 'importo' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
+                <th scope="col" aria-sort={ordinamentoFatture.campo === 'importo' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
                   <button type="button" onClick={() => handleSort('importo')}>
                     Importo {ordinamentoFatture.campo === 'importo' && (ordinamentoFatture.direzione === 'asc' ? '↑' : '↓')}
                   </button>
                 </th>
-                <th></th>
+                <th scope="col"></th>
               </tr>
             </thead>
             <tbody>

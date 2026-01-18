@@ -542,13 +542,13 @@ function LinesEditor({
           <table className="table">
             <thead>
               <tr>
-                <th style={{ width: '5%' }}>#</th>
-                <th style={{ width: '35%' }}>Descrizione</th>
-                <th style={{ width: '12%' }}>Qta</th>
-                <th style={{ width: '15%' }}>Prezzo</th>
-                <th style={{ width: '10%' }}>IVA %</th>
-                <th style={{ width: '15%' }}>Totale</th>
-                <th style={{ width: '8%' }}></th>
+                <th scope="col" style={{ width: '5%' }}>#</th>
+                <th scope="col" style={{ width: '35%' }}>Descrizione</th>
+                <th scope="col" style={{ width: '12%' }}>Qta</th>
+                <th scope="col" style={{ width: '15%' }}>Prezzo</th>
+                <th scope="col" style={{ width: '10%' }}>IVA %</th>
+                <th scope="col" style={{ width: '15%' }}>Totale</th>
+                <th scope="col" style={{ width: '8%' }}></th>
               </tr>
             </thead>
             <tbody>

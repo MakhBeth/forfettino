@@ -126,10 +126,10 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
           <table className="table">
             <thead>
               <tr>
-                <th>Cliente</th>
-                <th>Quantità</th>
-                <th>Tariffa</th>
-                <th>Totale</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Quantità</th>
+                <th scope="col">Tariffa</th>
+                <th scope="col">Totale</th>
               </tr>
             </thead>
             <tbody>
@@ -167,7 +167,7 @@ export function Calendario({ setShowModal, setSelectedDate }: CalendarioProps) {
         <div className="card">
           <h2 className="card-title">Attività del Mese</h2>
           <table className="table">
-            <thead><tr><th>Data</th><th>Cliente</th><th>Durata</th><th>Note</th><th></th></tr></thead>
+            <thead><tr><th scope="col">Data</th><th scope="col">Cliente</th><th scope="col">Durata</th><th scope="col">Note</th><th scope="col"></th></tr></thead>
             <tbody>
               {workLogs.filter(w => {
                 const d = new Date(w.data);

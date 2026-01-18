@@ -138,7 +138,7 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
         </div>
         {clienti.length > 0 ? (
           <table className="table" style={{ marginTop: 16 }}>
-            <thead><tr><th>Nome</th><th>P.IVA</th><th>Email</th><th>Tariffa</th><th></th></tr></thead>
+            <thead><tr><th scope="col">Nome</th><th scope="col">P.IVA</th><th scope="col">Email</th><th scope="col">Tariffa</th><th scope="col"></th></tr></thead>
             <tbody>
               {clienti.map(c => (
                 <tr key={c.id}>
