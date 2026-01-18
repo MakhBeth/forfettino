@@ -274,23 +274,23 @@ export function FatturaCortesia() {
         {showFooter && (
           <div className="grid-2" style={{ marginTop: 12 }}>
             <div className="input-group">
-              <label className="input-label">Testo Footer (opzionale)</label>
+              <label className="input-label">Nome nel footer</label>
               <input
                 type="text"
                 className="input-field"
                 value={footerText}
                 onChange={(e) => setFooterText(e.target.value)}
-                placeholder="Generato con"
+                placeholder="ForfettAIro"
               />
             </div>
             <div className="input-group">
-              <label className="input-label">Link Footer (opzionale)</label>
+              <label className="input-label">Link nel footer</label>
               <input
                 type="url"
                 className="input-field"
                 value={footerLink}
                 onChange={(e) => setFooterLink(e.target.value)}
-                placeholder="https://esempio.com"
+                placeholder="https://github.com/MakhBeth/forfettAIro"
               />
             </div>
           </div>
