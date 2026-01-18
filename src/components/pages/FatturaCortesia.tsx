@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Upload, Download, FileText, Check, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { Upload, Download, FileText, Check, ChevronDown, ChevronUp, Plus, Trash2, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { parseXmlToInvoice } from '../../lib/pdf/xmlParser';
 import GeneratePDF from '../../lib/pdf/renderer';
@@ -13,8 +13,10 @@ export function FatturaCortesia() {
 
   // PDF Settings (from config)
   const [primaryColor, setPrimaryColor] = useState(config.courtesyInvoice?.primaryColor || '#6699cc');
+  const [textColor, setTextColor] = useState(config.courtesyInvoice?.textColor || '#033243');
   const [showFooter, setShowFooter] = useState(config.courtesyInvoice?.includeFooter !== false);
   const [locale, setLocale] = useState(config.courtesyInvoice?.locale || 'it');
+  const [logoBase64, setLogoBase64] = useState<string | undefined>(config.courtesyInvoice?.logoBase64);
 
   // File state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -26,19 +28,44 @@ export function FatturaCortesia() {
     setConfig({
       ...config,
       courtesyInvoice: {
-        ...config.courtesyInvoice,
-        primaryColor,
-        includeFooter: showFooter,
-        locale,
-        // Keep other settings
-        textColor: config.courtesyInvoice?.textColor || '#033243',
         companyName: config.courtesyInvoice?.companyName || '',
         vatNumber: config.courtesyInvoice?.vatNumber || '',
         country: config.courtesyInvoice?.country || 'IT',
         defaultServices: config.courtesyInvoice?.defaultServices || [],
+        ...config.courtesyInvoice,
+        primaryColor,
+        textColor,
+        includeFooter: showFooter,
+        locale,
+        logoBase64,
       }
     });
     showToast('Impostazioni salvate!', 'success');
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 500 * 1024) {
+      showToast('Immagine troppo grande (max 500KB)', 'error');
+      return;
+    }
+
+    if (!file.type.match(/^image\/(png|jpeg|jpg)$/)) {
+      showToast('Formato non supportato (solo PNG/JPG)', 'error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setLogoBase64(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeLogo = () => {
+    setLogoBase64(undefined);
   };
 
   const processFile = async (file: File) => {
@@ -100,11 +127,11 @@ export function FatturaCortesia() {
       const options: PDFOptions = {
         colors: {
           primary: primaryColor,
-          text: config.courtesyInvoice?.textColor || '#033243',
+          text: textColor,
         },
         footer: showFooter,
         locale,
-        logoSrc: config.courtesyInvoice?.logoBase64,
+        logoSrc: logoBase64,
       };
 
       const pdfDoc = GeneratePDF(parsedInvoice, options);
@@ -139,23 +166,93 @@ export function FatturaCortesia() {
           IMPOSTAZIONI PDF
         </div>
 
+        {/* Logo */}
         <div className="input-group">
-          <label className="input-label">Colore Primario</label>
-          <input
-            type="color"
-            value={primaryColor}
-            onChange={(e) => setPrimaryColor(e.target.value)}
-            style={{
-              width: '100%',
-              height: 50,
-              padding: 0,
-              border: 'none',
-              borderRadius: 8,
-              cursor: 'pointer',
-            }}
-          />
+          <label className="input-label">Logo (PNG/JPG, max 500KB)</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {logoBase64 ? (
+              <>
+                <img
+                  src={logoBase64}
+                  alt="Logo"
+                  style={{
+                    width: 60,
+                    height: 60,
+                    objectFit: 'contain',
+                    borderRadius: 8,
+                    background: 'var(--bg-secondary)',
+                  }}
+                />
+                <button className="btn btn-danger btn-sm" onClick={removeLogo}>
+                  <X size={14} /> Rimuovi
+                </button>
+              </>
+            ) : (
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 16px',
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                }}
+              >
+                <Upload size={18} />
+                <span>Carica logo</span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg"
+                  onChange={handleLogoUpload}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            )}
+          </div>
         </div>
 
+        {/* Colors */}
+        <div className="grid-2" style={{ marginTop: 16 }}>
+          <div className="input-group">
+            <label className="input-label">Colore Primario</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="color"
+                value={primaryColor}
+                onChange={(e) => setPrimaryColor(e.target.value)}
+                style={{ width: 50, height: 40, padding: 0, border: 'none', cursor: 'pointer', borderRadius: 4 }}
+              />
+              <input
+                type="text"
+                className="input-field"
+                value={primaryColor}
+                onChange={(e) => setPrimaryColor(e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </div>
+          </div>
+          <div className="input-group">
+            <label className="input-label">Colore Testo</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <input
+                type="color"
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+                style={{ width: 50, height: 40, padding: 0, border: 'none', cursor: 'pointer', borderRadius: 4 }}
+              />
+              <input
+                type="text"
+                className="input-field"
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
         <div className="input-group" style={{ marginTop: 16 }}>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
             <input
