@@ -132,7 +132,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 🧪 The Vibecoding Experiment
 
-This was an experiment in pure vibecoding. V1 was built entirely with the Claude iOS app, but it couldn't handle deployment. After manually deploying and configuring Netlify (the meme "AI: why can't they see my new site on localhost" is real), I started using GitHub Copilot for new features.
+This started as an experiment in pure vibecoding. V1 was built entirely with the Claude iOS app, but it couldn't handle deployment. After manually deploying and configuring Netlify (the meme "AI: why can't they see my new site on localhost" is real), I started using GitHub Copilot for new features.
 
 It didn't go badly until: I found conflicts to resolve... in the `node_modules` folder, a couple of "undefined is not a function" (sigh), and most importantly, hallucinations. So I had to bring out Claude Code and managed to rewrite the project so it wasn't a complete mess anymore.
 
