@@ -156,77 +156,6 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
         </div>
       </div>
 
-      {/* Sincronizzazione Cartella */}
-      <div className="card">
-        <h2 className="card-title"><FolderSync size={16} aria-hidden="true" style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />Sincronizzazione Cartella</h2>
-
-        {showUnsupportedMessage && (
-          <div className="backup-info" style={{ marginBottom: 16, borderColor: 'var(--accent-orange)' }}>
-            <h2><AlertCircle size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} /> Browser non supportato</h2>
-            <p>{getUnsupportedBrowserMessage()}</p>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => setShowUnsupportedMessage(false)}
-              style={{ marginTop: 8 }}
-            >
-              Chiudi
-            </button>
-          </div>
-        )}
-
-        {syncFolderHandle && syncFolderName ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-              <FolderOpen size={20} style={{ color: 'var(--accent-green)' }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500 }}>{syncFolderName}</div>
-                {lastSyncTime && (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                    Ultimo sync: {lastSyncTime.toLocaleTimeString()}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="backup-section">
-              <button
-                className="btn btn-primary"
-                onClick={handleSyncNow}
-                disabled={isSyncing}
-              >
-                <RefreshCw size={18} className={isSyncing ? 'spinning' : ''} aria-hidden="true" />
-                {isSyncing ? 'Sincronizzazione...' : 'Sincronizza Ora'}
-              </button>
-              <button
-                className="btn btn-secondary"
-                onClick={handleSelectSyncFolder}
-              >
-                <FolderOpen size={18} aria-hidden="true" /> Cambia Cartella
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={handleRemoveSyncFolder}
-              >
-                <X size={18} aria-hidden="true" /> Rimuovi
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
-              Seleziona una cartella sincronizzata (Dropbox, iCloud Drive, Google Drive) per mantenere i dati aggiornati su tutti i dispositivi.
-            </p>
-            <button className="btn btn-primary" onClick={handleSelectSyncFolder}>
-              <FolderOpen size={18} aria-hidden="true" /> Seleziona Cartella
-            </button>
-          </>
-        )}
-
-        <div className="backup-info" style={{ marginTop: 16 }}>
-          <h2>ℹ️ Come funziona</h2>
-          <p>I dati vengono salvati in un file JSON nella cartella selezionata. Se la cartella è sincronizzata da un servizio cloud, i dati saranno disponibili su tutti i dispositivi che puntano alla stessa cartella.</p>
-        </div>
-      </div>
-
       {/* Dati P.IVA */}
       <div className="card">
         <h2 className="card-title"><Building size={16} aria-hidden="true" style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />Dati P.IVA</h2>
@@ -484,6 +413,77 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
       <div className="card">
         <h2 className="card-title"><Palette size={16} aria-hidden="true" style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />Aspetto</h2>
         <ThemeSwitch />
+      </div>
+
+      {/* Sincronizzazione Cartella */}
+      <div className="card">
+        <h2 className="card-title"><FolderSync size={16} aria-hidden="true" style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />Sincronizzazione Cartella</h2>
+
+        {showUnsupportedMessage && (
+          <div className="backup-info" style={{ marginBottom: 16, borderColor: 'var(--accent-orange)' }}>
+            <h2><AlertCircle size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} /> Browser non supportato</h2>
+            <p>{getUnsupportedBrowserMessage()}</p>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowUnsupportedMessage(false)}
+              style={{ marginTop: 8 }}
+            >
+              Chiudi
+            </button>
+          </div>
+        )}
+
+        {syncFolderHandle && syncFolderName ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <FolderOpen size={20} style={{ color: 'var(--accent-green)' }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>{syncFolderName}</div>
+                {lastSyncTime && (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Ultimo sync: {lastSyncTime.toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="backup-section">
+              <button
+                className="btn btn-primary"
+                onClick={handleSyncNow}
+                disabled={isSyncing}
+              >
+                <RefreshCw size={18} className={isSyncing ? 'spinning' : ''} aria-hidden="true" />
+                {isSyncing ? 'Sincronizzazione...' : 'Sincronizza Ora'}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={handleSelectSyncFolder}
+              >
+                <FolderOpen size={18} aria-hidden="true" /> Cambia Cartella
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={handleRemoveSyncFolder}
+              >
+                <X size={18} aria-hidden="true" /> Rimuovi
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
+              Seleziona una cartella sincronizzata (Dropbox, iCloud Drive, Google Drive) per mantenere i dati aggiornati su tutti i dispositivi.
+            </p>
+            <button className="btn btn-primary" onClick={handleSelectSyncFolder}>
+              <FolderOpen size={18} aria-hidden="true" /> Seleziona Cartella
+            </button>
+          </>
+        )}
+
+        <div className="backup-info" style={{ marginTop: 16 }}>
+          <h2>ℹ️ Come funziona</h2>
+          <p>I dati vengono salvati in un file JSON nella cartella selezionata. Se la cartella è sincronizzata da un servizio cloud, i dati saranno disponibili su tutti i dispositivi che puntano alla stessa cartella.</p>
+        </div>
       </div>
     </>
   );

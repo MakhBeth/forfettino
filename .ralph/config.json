@@ -1,0 +1,17 @@
+{
+  "version": "1.0.10",
+  "language": "en",
+  "provider": "none",
+  "vm_ip": "",
+  "user": "davidedipumpo",
+  "notifications": {
+    "ntfy_enabled": false,
+    "ntfy_topic": ""
+  },
+  "github": {
+    "username": "MakhBeth"
+  },
+  "claude": {
+    "auth_method": "subscription"
+  }
+}

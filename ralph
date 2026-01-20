@@ -1,0 +1,4 @@
+#!/bin/bash
+# Ralph CLI wrapper
+RALPH_DIR=".ralph"
+exec "$RALPH_DIR/scripts/ralph.sh" "$@"
