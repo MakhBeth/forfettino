@@ -528,6 +528,10 @@ dialog.modal:focus {
   to { transform: rotate(360deg); }
 }
 
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
 /* Theme Switch Component */
 .theme-switch {
   display: flex;

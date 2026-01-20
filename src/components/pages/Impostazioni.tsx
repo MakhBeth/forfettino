@@ -1,10 +1,21 @@
-import { useState } from 'react';
-import { Download, Upload, Database, Plus, X, Edit, Trash2, Users, Palette, Building } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Download, Upload, Database, Plus, X, Edit, Trash2, Users, Palette, Building, FolderSync, RefreshCw, FolderOpen, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import type { Cliente, EmittenteConfig } from '../../types';
 import { COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
 import { ThemeSwitch } from '../shared/ThemeSwitch';
 import { getClientColor } from '../../lib/utils/colorUtils';
+import {
+  isFileSystemAccessSupported,
+  getUnsupportedBrowserMessage,
+  selectSyncFolder,
+  getStoredDirectoryHandle,
+  clearStoredDirectoryHandle,
+  verifyPermission,
+  writeSyncFile,
+  readSyncFile,
+  getFolderName
+} from '../../lib/utils/fileSystemSync';
 
 const getClientDisplayColor = (cliente: Cliente): string => {
   return cliente.color || getClientColor(cliente.id);
@@ -17,8 +28,98 @@ interface ImpostazioniProps {
 }
 
 export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: ImpostazioniProps) {
-  const { config, clienti, removeCliente, setConfig } = useApp();
+  const { config, clienti, removeCliente, setConfig, showToast, importData } = useApp();
   const [newAteco, setNewAteco] = useState<string>('');
+
+  // Sync folder state
+  const [syncFolderHandle, setSyncFolderHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [syncFolderName, setSyncFolderName] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [showUnsupportedMessage, setShowUnsupportedMessage] = useState(false);
+
+  // Restore saved directory handle on mount
+  useEffect(() => {
+    async function restoreHandle() {
+      if (!isFileSystemAccessSupported()) return;
+
+      const handle = await getStoredDirectoryHandle();
+      if (handle) {
+        const hasPermission = await verifyPermission(handle);
+        if (hasPermission) {
+          setSyncFolderHandle(handle);
+          setSyncFolderName(getFolderName(handle));
+        }
+      }
+    }
+    restoreHandle();
+  }, []);
+
+  const handleSelectSyncFolder = async () => {
+    if (!isFileSystemAccessSupported()) {
+      setShowUnsupportedMessage(true);
+      return;
+    }
+
+    try {
+      const handle = await selectSyncFolder();
+      if (handle) {
+        setSyncFolderHandle(handle);
+        setSyncFolderName(getFolderName(handle));
+        showToast('Cartella di sincronizzazione selezionata!');
+      }
+    } catch (err) {
+      showToast('Errore nella selezione della cartella', 'error');
+    }
+  };
+
+  const handleRemoveSyncFolder = async () => {
+    await clearStoredDirectoryHandle();
+    setSyncFolderHandle(null);
+    setSyncFolderName(null);
+    setLastSyncTime(null);
+    showToast('Cartella di sincronizzazione rimossa');
+  };
+
+  const handleSyncNow = async () => {
+    if (!syncFolderHandle) return;
+
+    setIsSyncing(true);
+    try {
+      // First, try to read existing data from the sync folder
+      const remoteData = await readSyncFile(syncFolderHandle);
+
+      if (remoteData) {
+        // Import the remote data
+        await importData(remoteData);
+        showToast('Dati sincronizzati dalla cartella!');
+      }
+
+      // Then export current data to the sync folder
+      const { dbManager } = await import('../../lib/db/IndexedDBManager');
+      const localData = await dbManager.exportAll();
+      await writeSyncFile(syncFolderHandle, localData);
+
+      setLastSyncTime(new Date());
+      if (!remoteData) {
+        showToast('Dati esportati nella cartella di sync!');
+      }
+    } catch (err: any) {
+      // Check if permission was revoked
+      if (err.name === 'NotAllowedError') {
+        const hasPermission = await verifyPermission(syncFolderHandle);
+        if (!hasPermission) {
+          showToast('Permesso negato. Riseleziona la cartella.', 'error');
+          setSyncFolderHandle(null);
+          setSyncFolderName(null);
+          return;
+        }
+      }
+      showToast('Errore durante la sincronizzazione', 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const annoCorrente = new Date().getFullYear();
   const anniAttivita = annoCorrente - config.annoApertura;
@@ -52,6 +153,77 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
         <div className="backup-info">
           <h2>ℹ️ Info backup</h2>
           <p>I dati sono in IndexedDB (locale). Esporta regolarmente per sicurezza. Il JSON contiene: config, clienti, fatture e ore.</p>
+        </div>
+      </div>
+
+      {/* Sincronizzazione Cartella */}
+      <div className="card">
+        <h2 className="card-title"><FolderSync size={16} aria-hidden="true" style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />Sincronizzazione Cartella</h2>
+
+        {showUnsupportedMessage && (
+          <div className="backup-info" style={{ marginBottom: 16, borderColor: 'var(--accent-orange)' }}>
+            <h2><AlertCircle size={16} style={{ display: 'inline', marginRight: 6, verticalAlign: 'middle' }} /> Browser non supportato</h2>
+            <p>{getUnsupportedBrowserMessage()}</p>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setShowUnsupportedMessage(false)}
+              style={{ marginTop: 8 }}
+            >
+              Chiudi
+            </button>
+          </div>
+        )}
+
+        {syncFolderHandle && syncFolderName ? (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <FolderOpen size={20} style={{ color: 'var(--accent-green)' }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500 }}>{syncFolderName}</div>
+                {lastSyncTime && (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Ultimo sync: {lastSyncTime.toLocaleTimeString()}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="backup-section">
+              <button
+                className="btn btn-primary"
+                onClick={handleSyncNow}
+                disabled={isSyncing}
+              >
+                <RefreshCw size={18} className={isSyncing ? 'spinning' : ''} aria-hidden="true" />
+                {isSyncing ? 'Sincronizzazione...' : 'Sincronizza Ora'}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={handleSelectSyncFolder}
+              >
+                <FolderOpen size={18} aria-hidden="true" /> Cambia Cartella
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={handleRemoveSyncFolder}
+              >
+                <X size={18} aria-hidden="true" /> Rimuovi
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>
+              Seleziona una cartella sincronizzata (Dropbox, iCloud Drive, Google Drive) per mantenere i dati aggiornati su tutti i dispositivi.
+            </p>
+            <button className="btn btn-primary" onClick={handleSelectSyncFolder}>
+              <FolderOpen size={18} aria-hidden="true" /> Seleziona Cartella
+            </button>
+          </>
+        )}
+
+        <div className="backup-info" style={{ marginTop: 16 }}>
+          <h2>ℹ️ Come funziona</h2>
+          <p>I dati vengono salvati in un file JSON nella cartella selezionata. Se la cartella è sincronizzata da un servizio cloud, i dati saranno disponibili su tutti i dispositivi che puntano alla stessa cartella.</p>
         </div>
       </div>
 
