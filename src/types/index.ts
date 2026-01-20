@@ -1,5 +1,8 @@
 // Type definitions for Forfettino
 
+// Special client ID for vacation/holiday entries (not shown in client list)
+export const VACATION_CLIENT_ID = '__vacation__';
+
 export type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs';
 
 export interface Cliente {

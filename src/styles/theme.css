@@ -254,6 +254,7 @@ select.input-field option {
 
 .badge { padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; white-space: nowrap; }
 .badge-green { background: rgba(16, 185, 129, 0.15); color: var(--accent-green); }
+.badge-yellow { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
 
 .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .calendar-header { padding: 12px; text-align: center; font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; }
@@ -288,6 +289,8 @@ select.input-field option {
 .calendar-day.weekend { background: rgba(4, 120, 87, 0.08); }
 .calendar-day.has-work { background: rgba(16, 185, 129, 0.2); }
 .calendar-day.weekend.has-work { background: rgba(16, 185, 129, 0.25); }
+.calendar-day.vacation-mode { cursor: crosshair; }
+.calendar-day.vacation-mode:hover { background: rgba(245, 158, 11, 0.2); }
 
 .calendar-day-number {
   font-weight: 600;

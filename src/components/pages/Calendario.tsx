@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Trash2, ArrowUpDown, Edit } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, ArrowUpDown, Edit, Palmtree } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getCalendarDays, formatDate } from '../../lib/utils/dateHelpers';
 import { getClientColor } from '../../lib/utils/colorUtils';
 import { getWorkLogQuantita } from '../../lib/utils/calculations';
 import type { Cliente, WorkLog } from '../../types';
+import { VACATION_CLIENT_ID } from '../../types';
 
 // Helper to get client color (custom or generated)
 const getClientDisplayColor = (cliente: Cliente | undefined, clientId: string): string => {
+  if (clientId === VACATION_CLIENT_ID) return '#f59e0b'; // Amber for vacation
   if (cliente?.color) return cliente.color;
   return getClientColor(clientId);
 };
@@ -42,6 +44,7 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
   const [recapSort, setRecapSort] = useState<{ field: RecapSortField; direction: SortDirection }>({ field: 'totale', direction: 'desc' });
   const [activitySort, setActivitySort] = useState<{ field: ActivitySortField; direction: SortDirection }>({ field: 'data', direction: 'desc' });
   const [draggedWorkLog, setDraggedWorkLog] = useState<{ log: WorkLog; duplicate: boolean } | null>(null);
+  const [vacationMode, setVacationMode] = useState(false);
 
   const toggleRecapSort = (field: RecapSortField) => {
     setRecapSort(prev => ({
@@ -92,6 +95,33 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
     })
     .filter(item => item !== null);
 
+  // Calculate worked and vacation days for the month summary
+  const monthWorkLogs = workLogs.filter(log => {
+    const logDate = new Date(log.data);
+    return logDate >= monthStart && logDate <= monthEnd;
+  });
+
+  // Get unique dates with work (excluding vacation)
+  const workedDates = new Set(
+    monthWorkLogs
+      .filter(log => log.clienteId !== VACATION_CLIENT_ID)
+      .map(log => log.data)
+  );
+
+  // Get unique vacation dates
+  const vacationDates = new Set(
+    monthWorkLogs
+      .filter(log => log.clienteId === VACATION_CLIENT_ID)
+      .map(log => log.data)
+  );
+
+  // Only count past days for worked days summary
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+
+  const pastWorkedDays = Array.from(workedDates).filter(date => new Date(date) <= todayDate).length;
+  const totalVacationDays = vacationDates.size;
+
   return (
     <>
       <div className="page-header">
@@ -100,11 +130,26 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
       </div>
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <button className="btn btn-secondary" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))} aria-label="Mese precedente"><ChevronLeft size={20} aria-hidden="true" /></button>
           <h2 style={{ fontSize: '1.3rem' }}>{currentMonth.toLocaleString('it-IT', { month: 'long', year: 'numeric' })}</h2>
           <button className="btn btn-secondary" onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))} aria-label="Mese successivo"><ChevronRight size={20} aria-hidden="true" /></button>
         </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+          <button
+            className={`btn ${vacationMode ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setVacationMode(!vacationMode)}
+            style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+          >
+            <Palmtree size={18} />
+            {vacationMode ? 'Exit vacation mode' : 'Add vacation'}
+          </button>
+        </div>
+        {vacationMode && (
+          <div style={{ textAlign: 'center', marginBottom: 16, padding: '8px 16px', background: 'var(--bg-secondary)', borderRadius: 8, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            Click on days to toggle vacation. Click the button again to exit.
+          </div>
+        )}
 
         <div className="calendar-grid">
           {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(d => <div key={d} className="calendar-header">{d}</div>)}
@@ -116,7 +161,7 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
             const hasWork = dayLogs.length > 0;
 
             // Group logs by client
-            const clientData: Array<{ cliente: Cliente; total: number; tipo: 'ore' | 'giornata'; logs: typeof dayLogs }> = [];
+            const clientData: Array<{ cliente: Cliente; total: number; tipo: 'ore' | 'giornata'; logs: typeof dayLogs; isVacation: boolean }> = [];
             if (hasWork) {
               const clientGroups: Record<string, typeof dayLogs> = {};
               dayLogs.forEach(log => {
@@ -125,11 +170,18 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
               });
 
               Object.entries(clientGroups).forEach(([clienteId, logs]) => {
-                const cliente = clienti.find(c => c.id === clienteId);
-                if (cliente) {
-                  const total = logs.reduce((sum, log) => sum + getWorkLogQuantita(log), 0);
-                  const allDays = logs.every(l => l.tipo === 'giornata');
-                  clientData.push({ cliente, total, tipo: allDays ? 'giornata' : 'ore', logs });
+                const total = logs.reduce((sum, log) => sum + getWorkLogQuantita(log), 0);
+                const allDays = logs.every(l => l.tipo === 'giornata');
+
+                if (clienteId === VACATION_CLIENT_ID) {
+                  // Vacation entry - create a fake client for display
+                  const vacationCliente: Cliente = { id: VACATION_CLIENT_ID, nome: '🏖️' };
+                  clientData.push({ cliente: vacationCliente, total, tipo: 'giornata', logs, isVacation: true });
+                } else {
+                  const cliente = clienti.find(c => c.id === clienteId);
+                  if (cliente) {
+                    clientData.push({ cliente, total, tipo: allDays ? 'giornata' : 'ore', logs, isVacation: false });
+                  }
                 }
               });
 
@@ -143,12 +195,30 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
             return (
               <div
                 key={i}
-                className={`calendar-day ${day.otherMonth ? 'other-month' : ''} ${dateStr === today ? 'today' : ''} ${isWeekendDay ? 'weekend' : ''} ${hasWork ? 'has-work' : ''} ${draggedWorkLog ? 'drop-target' : ''}`}
+                className={`calendar-day ${day.otherMonth ? 'other-month' : ''} ${dateStr === today ? 'today' : ''} ${isWeekendDay ? 'weekend' : ''} ${hasWork ? 'has-work' : ''} ${draggedWorkLog ? 'drop-target' : ''} ${vacationMode ? 'vacation-mode' : ''}`}
                 style={hasWork && primaryColor ? { backgroundColor: hexToRgba(primaryColor, 0.1) } : undefined}
-                onClick={() => {
+                onClick={async () => {
                   if (!day.otherMonth && !draggedWorkLog) {
-                    setSelectedDate(dateStr);
-                    setShowModal('add-work');
+                    if (vacationMode) {
+                      // Check if vacation already exists for this date
+                      const existingVacation = workLogs.find(w => w.data === dateStr && w.clienteId === VACATION_CLIENT_ID);
+                      if (existingVacation) {
+                        // Remove vacation if it already exists (toggle off)
+                        await removeWorkLog(existingVacation.id);
+                      } else {
+                        // Add vacation
+                        await addWorkLog({
+                          id: Date.now().toString(),
+                          clienteId: VACATION_CLIENT_ID,
+                          data: dateStr,
+                          tipo: 'giornata',
+                          quantita: 1
+                        });
+                      }
+                    } else {
+                      setSelectedDate(dateStr);
+                      setShowModal('add-work');
+                    }
                   }
                 }}
                 onDragOver={(e) => {
@@ -323,8 +393,8 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
                   switch (activitySort.field) {
                     case 'data': return dir * (new Date(a.data).getTime() - new Date(b.data).getTime());
                     case 'cliente': {
-                      const clienteA = clienti.find(c => c.id === a.clienteId)?.nome || '';
-                      const clienteB = clienti.find(c => c.id === b.clienteId)?.nome || '';
+                      const clienteA = a.clienteId === VACATION_CLIENT_ID ? '🏖️ Vacation' : (clienti.find(c => c.id === a.clienteId)?.nome || '');
+                      const clienteB = b.clienteId === VACATION_CLIENT_ID ? '🏖️ Vacation' : (clienti.find(c => c.id === b.clienteId)?.nome || '');
                       return dir * clienteA.localeCompare(clienteB);
                     }
                     case 'durata': return dir * (getWorkLogQuantita(a) - getWorkLogQuantita(b));
@@ -332,7 +402,8 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
                   }
                 })
                 .map(log => {
-                  const logCliente = clienti.find(c => c.id === log.clienteId);
+                  const isVacation = log.clienteId === VACATION_CLIENT_ID;
+                  const logCliente = isVacation ? undefined : clienti.find(c => c.id === log.clienteId);
                   const logColor = getClientDisplayColor(logCliente, log.clienteId);
                   return (
                     <tr key={log.id}>
@@ -340,14 +411,14 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
                       <td>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: logColor, flexShrink: 0, display: 'inline-block' }} />
-                          {logCliente?.nome || '-'}
+                          {isVacation ? '🏖️ Vacation' : (logCliente?.nome || '-')}
                         </span>
                       </td>
-                      <td><span className="badge badge-green">{log.tipo === 'giornata' ? `${getWorkLogQuantita(log)} giornata` : `${getWorkLogQuantita(log)} ore`}</span></td>
+                      <td><span className={`badge ${isVacation ? 'badge-yellow' : 'badge-green'}`}>{log.tipo === 'giornata' ? `${getWorkLogQuantita(log)} giornata` : `${getWorkLogQuantita(log)} ore`}</span></td>
                       <td style={{ color: 'var(--text-secondary)' }}>{log.note || '-'}</td>
                       <td>
                         <div style={{ display: 'flex', gap: 8 }}>
-                          <button className="btn btn-secondary btn-sm" onClick={() => { setEditingWorkLog(log); setShowModal('edit-work'); }} aria-label="Modifica attività"><Edit size={16} aria-hidden="true" /></button>
+                          {!isVacation && <button className="btn btn-secondary btn-sm" onClick={() => { setEditingWorkLog(log); setShowModal('edit-work'); }} aria-label="Modifica attività"><Edit size={16} aria-hidden="true" /></button>}
                           <button className="btn btn-danger" onClick={() => removeWorkLog(log.id)} aria-label="Elimina attività"><Trash2 size={16} aria-hidden="true" /></button>
                         </div>
                       </td>
@@ -359,6 +430,21 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
           </div>
         </div>
       )}
+
+      {/* Monthly Summary - Worked Days & Vacation Days */}
+      <div className="card" style={{ marginTop: 24 }}>
+        <h2 className="card-title">Monthly Summary</h2>
+        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 150, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8, textAlign: 'center' }}>
+            <div style={{ fontSize: '2rem', fontWeight: 600, color: 'var(--accent-green)' }}>{pastWorkedDays}</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>Worked days</div>
+          </div>
+          <div style={{ flex: 1, minWidth: 150, padding: 16, background: 'var(--bg-secondary)', borderRadius: 8, textAlign: 'center' }}>
+            <div style={{ fontSize: '2rem', fontWeight: 600, color: '#f59e0b' }}>{totalVacationDays}</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: 4 }}>🏖️ Vacation days</div>
+          </div>
+        </div>
+      </div>
     </>
   );
 }
