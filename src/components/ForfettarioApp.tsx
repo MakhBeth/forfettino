@@ -1,63 +1,189 @@
-import { useState, lazy, Suspense } from 'react';
-import { Settings, FileText, LayoutDashboard, Calendar, Download, Upload, Github, FilePlus } from 'lucide-react';
-import { AppProvider, useApp } from '../context/AppContext';
-import { Toast } from './shared/Toast';
-import { LoadingSpinner } from './shared/LoadingSpinner';
-import { useDesignStyle } from './shared/DesignStyleSwitch';
-import { parseFatturaXML, extractXmlFromZip } from '../lib/utils/xmlParsing';
-import { processBatchXmlFiles } from '../lib/utils/batchImport';
-import { extractEmittenteFromXml, autoPopulateConfig } from '../lib/utils/configAutoPopulate';
-import type { Cliente, Fattura, ImportSummary, WorkLog } from '../types';
-import '../styles/theme.css';
+import { useState, lazy, Suspense } from "react";
+import {
+  Settings,
+  FileText,
+  LayoutDashboard,
+  Calendar,
+  Download,
+  Upload,
+  Github,
+  FilePlus,
+  CalendarClock,
+} from "lucide-react";
+import { AppProvider, useApp } from "../context/AppContext";
+import { Toast } from "./shared/Toast";
+import { LoadingSpinner } from "./shared/LoadingSpinner";
+import { useDesignStyle } from "./shared/DesignStyleSwitch";
+import { parseFatturaXML, extractXmlFromZip } from "../lib/utils/xmlParsing";
+import { processBatchXmlFiles } from "../lib/utils/batchImport";
+import {
+  extractEmittenteFromXml,
+  autoPopulateConfig,
+} from "../lib/utils/configAutoPopulate";
+import type { Cliente, Fattura, ImportSummary, WorkLog } from "../types";
+import "../styles/theme.css";
 
 // Lazy load pages
-const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
-const FatturePage = lazy(() => import('./pages/Fatture').then(m => ({ default: m.FatturePage })));
-const Calendario = lazy(() => import('./pages/Calendario').then(m => ({ default: m.Calendario })));
-const Impostazioni = lazy(() => import('./pages/Impostazioni').then(m => ({ default: m.Impostazioni })));
-const FatturaCortesia = lazy(() => import('./pages/FatturaCortesia').then(m => ({ default: m.FatturaCortesia })));
+const Dashboard = lazy(() =>
+  import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })),
+);
+const FatturePage = lazy(() =>
+  import("./pages/Fatture").then((m) => ({ default: m.FatturePage })),
+);
+const Calendario = lazy(() =>
+  import("./pages/Calendario").then((m) => ({ default: m.Calendario })),
+);
+const Impostazioni = lazy(() =>
+  import("./pages/Impostazioni").then((m) => ({ default: m.Impostazioni })),
+);
+const FatturaCortesia = lazy(() =>
+  import("./pages/FatturaCortesia").then((m) => ({
+    default: m.FatturaCortesia,
+  })),
+);
+const Scadenze = lazy(() =>
+  import("./pages/Scadenze").then((m) => ({ default: m.Scadenze })),
+);
 
 // Lazy load modals
-const UploadFatturaModal = lazy(() => import('./modals/UploadFatturaModal').then(m => ({ default: m.UploadFatturaModal })));
-const BatchUploadModal = lazy(() => import('./modals/BatchUploadModal').then(m => ({ default: m.BatchUploadModal })));
-const UploadZipModal = lazy(() => import('./modals/UploadZipModal').then(m => ({ default: m.UploadZipModal })));
-const ImportSummaryModal = lazy(() => import('./modals/ImportSummaryModal').then(m => ({ default: m.ImportSummaryModal })));
-const AddClienteModal = lazy(() => import('./modals/AddClienteModal').then(m => ({ default: m.AddClienteModal })));
-const EditClienteModal = lazy(() => import('./modals/EditClienteModal').then(m => ({ default: m.EditClienteModal })));
-const AddWorkLogModal = lazy(() => import('./modals/AddWorkLogModal').then(m => ({ default: m.AddWorkLogModal })));
-const EditWorkLogModal = lazy(() => import('./modals/EditWorkLogModal').then(m => ({ default: m.EditWorkLogModal })));
-const ImportBackupModal = lazy(() => import('./modals/ImportBackupModal').then(m => ({ default: m.ImportBackupModal })));
-const EditDataIncassoModal = lazy(() => import('./modals/EditDataIncassoModal').then(m => ({ default: m.EditDataIncassoModal })));
-const CourtesyInvoiceModal = lazy(() => import('./modals/CourtesyInvoiceModal').then(m => ({ default: m.CourtesyInvoiceModal })));
-const ManageServicesModal = lazy(() => import('./modals/ManageServicesModal').then(m => ({ default: m.ManageServicesModal })));
-const NuovaFatturaModal = lazy(() => import('./modals/NuovaFatturaModal').then(m => ({ default: m.NuovaFatturaModal })));
+const UploadFatturaModal = lazy(() =>
+  import("./modals/UploadFatturaModal").then((m) => ({
+    default: m.UploadFatturaModal,
+  })),
+);
+const BatchUploadModal = lazy(() =>
+  import("./modals/BatchUploadModal").then((m) => ({
+    default: m.BatchUploadModal,
+  })),
+);
+const UploadZipModal = lazy(() =>
+  import("./modals/UploadZipModal").then((m) => ({
+    default: m.UploadZipModal,
+  })),
+);
+const ImportSummaryModal = lazy(() =>
+  import("./modals/ImportSummaryModal").then((m) => ({
+    default: m.ImportSummaryModal,
+  })),
+);
+const AddClienteModal = lazy(() =>
+  import("./modals/AddClienteModal").then((m) => ({
+    default: m.AddClienteModal,
+  })),
+);
+const EditClienteModal = lazy(() =>
+  import("./modals/EditClienteModal").then((m) => ({
+    default: m.EditClienteModal,
+  })),
+);
+const AddWorkLogModal = lazy(() =>
+  import("./modals/AddWorkLogModal").then((m) => ({
+    default: m.AddWorkLogModal,
+  })),
+);
+const EditWorkLogModal = lazy(() =>
+  import("./modals/EditWorkLogModal").then((m) => ({
+    default: m.EditWorkLogModal,
+  })),
+);
+const ImportBackupModal = lazy(() =>
+  import("./modals/ImportBackupModal").then((m) => ({
+    default: m.ImportBackupModal,
+  })),
+);
+const EditDataIncassoModal = lazy(() =>
+  import("./modals/EditDataIncassoModal").then((m) => ({
+    default: m.EditDataIncassoModal,
+  })),
+);
+const CourtesyInvoiceModal = lazy(() =>
+  import("./modals/CourtesyInvoiceModal").then((m) => ({
+    default: m.CourtesyInvoiceModal,
+  })),
+);
+const ManageServicesModal = lazy(() =>
+  import("./modals/ManageServicesModal").then((m) => ({
+    default: m.ManageServicesModal,
+  })),
+);
+const NuovaFatturaModal = lazy(() =>
+  import("./modals/NuovaFatturaModal").then((m) => ({
+    default: m.NuovaFatturaModal,
+  })),
+);
+const ScadenzaDetailModal = lazy(() =>
+  import("./modals/ScadenzaDetailModal").then((m) => ({
+    default: m.ScadenzaDetailModal,
+  })),
+);
+const CalendarDayModal = lazy(() =>
+  import("./modals/CalendarDayModal").then((m) => ({
+    default: m.CalendarDayModal,
+  })),
+);
 
 function ForfettarioAppInner() {
-  const { toast, exportData, importData, clienti, fatture, showToast, addCliente, addFattura, addWorkLog, updateCliente, updateFattura, updateWorkLog, config, setConfig } = useApp();
+  const {
+    toast,
+    exportData,
+    importData,
+    clienti,
+    fatture,
+    showToast,
+    addCliente,
+    addFattura,
+    addWorkLog,
+    updateCliente,
+    updateFattura,
+    updateWorkLog,
+    config,
+    setConfig,
+  } = useApp();
 
   // Initialize design style on app load
   useDesignStyle();
 
-  const [currentPage, setCurrentPage] = useState<string>('dashboard');
+  const [currentPage, setCurrentPage] = useState<string>("dashboard");
   const [showModal, setShowModal] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [annoSelezionato, setAnnoSelezionato] = useState<number>(new Date().getFullYear());
+  const [annoSelezionato, setAnnoSelezionato] = useState<number>(
+    new Date().getFullYear(),
+  );
 
-  const [newCliente, setNewCliente] = useState<Partial<Cliente>>({ nome: '', piva: '', email: '' });
+  const [newCliente, setNewCliente] = useState<Partial<Cliente>>({
+    nome: "",
+    piva: "",
+    email: "",
+  });
   const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
   const [editingFattura, setEditingFattura] = useState<Fattura | null>(null);
-  const [importSummary, setImportSummary] = useState<ImportSummary | null>(null);
-  const [newWorkLog, setNewWorkLog] = useState<Partial<WorkLog>>({ clienteId: '', quantita: undefined, tipo: 'ore', note: '' });
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(
+    null,
+  );
+  const [newWorkLog, setNewWorkLog] = useState<Partial<WorkLog>>({
+    clienteId: "",
+    quantita: undefined,
+    tipo: "ore",
+    note: "",
+  });
   const [editingWorkLog, setEditingWorkLog] = useState<WorkLog | null>(null);
+  const [selectedScadenzeDate, setSelectedScadenzeDate] = useState<
+    string | null
+  >(null);
 
   // Upload handlers
   const handleFatturaUpload = async (file: File) => {
     const text = await file.text();
     const parsed = parseFatturaXML(text);
     if (parsed) {
-      let clienteId = clienti.find(c => c.piva === parsed.clientePiva)?.id;
+      let clienteId = clienti.find((c) => c.piva === parsed.clientePiva)?.id;
       if (!clienteId && parsed.clienteNome) {
-        const nuovoCliente = { id: Date.now().toString(), nome: parsed.clienteNome, piva: parsed.clientePiva || '', email: '' };
+        const nuovoCliente = {
+          id: Date.now().toString(),
+          nome: parsed.clienteNome,
+          piva: parsed.clientePiva || "",
+          email: "",
+        };
         await addCliente(nuovoCliente);
         clienteId = nuovoCliente.id;
       }
@@ -68,9 +194,9 @@ function ForfettarioAppInner() {
         importo: parsed.importo,
         data: parsed.data,
         dataIncasso: parsed.dataIncasso,
-        clienteId: clienteId || '',
+        clienteId: clienteId || "",
         clienteNome: parsed.clienteNome,
-        duplicateKey: `${parsed.numero}-${parsed.data}-${parsed.importo}`
+        duplicateKey: `${parsed.numero}-${parsed.data}-${parsed.importo}`,
       };
       await addFattura(nuovaFattura);
 
@@ -80,16 +206,18 @@ function ForfettarioAppInner() {
         const configUpdates = autoPopulateConfig(extractedData, config);
         if (configUpdates) {
           setConfig({ ...config, ...configUpdates });
-          showToast('Fattura caricata! Impostazioni aggiornate automaticamente.');
+          showToast(
+            "Fattura caricata! Impostazioni aggiornate automaticamente.",
+          );
           setShowModal(null);
           return;
         }
       }
 
       setShowModal(null);
-      showToast('Fattura caricata!');
+      showToast("Fattura caricata!");
     } else {
-      showToast('Errore parsing XML', 'error');
+      showToast("Errore parsing XML", "error");
     }
   };
 
@@ -108,7 +236,7 @@ function ForfettarioAppInner() {
         fatture,
         clienti,
         parseFatturaXML,
-        null
+        null,
       );
 
       // Save new clienti and fatture to DB using context methods
@@ -130,11 +258,14 @@ function ForfettarioAppInner() {
         }
       }
 
-      setShowModal('import-summary');
+      setShowModal("import-summary");
       setImportSummary(summary);
     } catch (error: any) {
-      console.error('Batch upload error:', error);
-      showToast('Errore import batch: ' + (error?.message || 'errore sconosciuto'), 'error');
+      console.error("Batch upload error:", error);
+      showToast(
+        "Errore import batch: " + (error?.message || "errore sconosciuto"),
+        "error",
+      );
     }
   };
 
@@ -142,7 +273,7 @@ function ForfettarioAppInner() {
     try {
       const xmlFiles = await extractXmlFromZip(file);
       if (xmlFiles.length === 0) {
-        showToast('Nessun file XML trovato nel ZIP', 'error');
+        showToast("Nessun file XML trovato nel ZIP", "error");
         return;
       }
 
@@ -151,7 +282,7 @@ function ForfettarioAppInner() {
         fatture,
         clienti,
         parseFatturaXML,
-        null
+        null,
       );
 
       // Save new clienti and fatture to DB using context methods
@@ -173,10 +304,13 @@ function ForfettarioAppInner() {
         }
       }
 
-      setShowModal('import-summary');
+      setShowModal("import-summary");
       setImportSummary(summary);
     } catch (error: any) {
-      showToast('Errore caricamento ZIP: ' + (error?.message || 'errore sconosciuto'), 'error');
+      showToast(
+        "Errore caricamento ZIP: " + (error?.message || "errore sconosciuto"),
+        "error",
+      );
     }
   };
 
@@ -187,54 +321,111 @@ function ForfettarioAppInner() {
       await importData(data);
       setShowModal(null);
     } catch (error) {
-      showToast('Errore import', 'error');
+      showToast("Errore import", "error");
     }
   };
 
   return (
     <>
-      <a href="#main-content" className="skip-link">Salta al contenuto principale</a>
+      <a href="#main-content" className="skip-link">
+        Salta al contenuto principale
+      </a>
       <div className="app-container">
         <nav className="sidebar">
           <div className="logo">Forfettino</div>
           <div className="logo-sub">Gestione P.IVA Semplificata</div>
 
           <nav className="nav-items" aria-label="Navigazione principale">
-            <button type="button" className={`nav-item ${currentPage === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentPage('dashboard')} aria-current={currentPage === 'dashboard' ? 'page' : undefined}>
+            <button
+              type="button"
+              className={`nav-item ${currentPage === "dashboard" ? "active" : ""}`}
+              onClick={() => setCurrentPage("dashboard")}
+              aria-current={currentPage === "dashboard" ? "page" : undefined}
+            >
               <LayoutDashboard size={20} aria-hidden="true" /> Dashboard
             </button>
-            <button type="button" className={`nav-item ${currentPage === 'fatture' ? 'active' : ''}`} onClick={() => setCurrentPage('fatture')} aria-current={currentPage === 'fatture' ? 'page' : undefined}>
+            <button
+              type="button"
+              className={`nav-item ${currentPage === "fatture" ? "active" : ""}`}
+              onClick={() => setCurrentPage("fatture")}
+              aria-current={currentPage === "fatture" ? "page" : undefined}
+            >
               <FileText size={20} aria-hidden="true" /> Fatture
             </button>
-            <button type="button" className={`nav-item ${currentPage === 'calendario' ? 'active' : ''}`} onClick={() => setCurrentPage('calendario')} aria-current={currentPage === 'calendario' ? 'page' : undefined}>
+            <button
+              type="button"
+              className={`nav-item ${currentPage === "calendario" ? "active" : ""}`}
+              onClick={() => setCurrentPage("calendario")}
+              aria-current={currentPage === "calendario" ? "page" : undefined}
+            >
               <Calendar size={20} aria-hidden="true" /> Calendario
             </button>
-            <button type="button" className={`nav-item ${currentPage === 'fattura-cortesia' ? 'active' : ''}`} onClick={() => setCurrentPage('fattura-cortesia')} aria-current={currentPage === 'fattura-cortesia' ? 'page' : undefined}>
+            <button
+              type="button"
+              className={`nav-item ${currentPage === "fattura-cortesia" ? "active" : ""}`}
+              onClick={() => setCurrentPage("fattura-cortesia")}
+              aria-current={
+                currentPage === "fattura-cortesia" ? "page" : undefined
+              }
+            >
               <FilePlus size={20} aria-hidden="true" /> Fattura di Cortesia
             </button>
-            <button type="button" className={`nav-item ${currentPage === 'impostazioni' ? 'active' : ''}`} onClick={() => setCurrentPage('impostazioni')} aria-current={currentPage === 'impostazioni' ? 'page' : undefined}>
+            <button
+              type="button"
+              className={`nav-item ${currentPage === "scadenze" ? "active" : ""}`}
+              onClick={() => setCurrentPage("scadenze")}
+              aria-current={currentPage === "scadenze" ? "page" : undefined}
+            >
+              <CalendarClock size={20} aria-hidden="true" /> Scadenze
+            </button>
+            <button
+              type="button"
+              className={`nav-item ${currentPage === "impostazioni" ? "active" : ""}`}
+              onClick={() => setCurrentPage("impostazioni")}
+              aria-current={currentPage === "impostazioni" ? "page" : undefined}
+            >
               <Settings size={20} aria-hidden="true" /> Impostazioni
             </button>
           </nav>
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={exportData}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ flex: 1 }}
+              onClick={exportData}
+            >
               <Download size={16} aria-hidden="true" /> Export
             </button>
-            <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => setShowModal('import')}>
+            <button
+              className="btn btn-secondary btn-sm"
+              style={{ flex: 1 }}
+              onClick={() => setShowModal("import")}
+            >
               <Upload size={16} aria-hidden="true" /> Import
             </button>
           </div>
 
           <div className="footer">
             <div className="footer-credits">
-              Made by <a href="https://github.com/MakhBeth" target="_blank" rel="noopener noreferrer" aria-label="MakhBeth (si apre in una nuova finestra)">MakhBeth</a>
+              Made by{" "}
+              <a
+                href="https://github.com/MakhBeth"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="MakhBeth (si apre in una nuova finestra)"
+              >
+                MakhBeth
+              </a>
             </div>
-            <div className="footer-privacy">
-              🔒 All data stays local
-            </div>
+            <div className="footer-privacy">🔒 All data stays local</div>
             <div className="footer-link">
-              <a href="https://github.com/MakhBeth/forfettino" target="_blank" rel="noopener noreferrer" lang="en" aria-label="View on GitHub (opens in a new window)">
+              <a
+                href="https://github.com/MakhBeth/forfettino"
+                target="_blank"
+                rel="noopener noreferrer"
+                lang="en"
+                aria-label="View on GitHub (opens in a new window)"
+              >
                 <Github size={16} aria-hidden="true" /> View on GitHub
               </a>
             </div>
@@ -243,33 +434,34 @@ function ForfettarioAppInner() {
 
         <main id="main-content" className="main-content">
           <Suspense fallback={<LoadingSpinner />}>
-            {currentPage === 'dashboard' && (
+            {currentPage === "dashboard" && (
               <Dashboard
                 annoSelezionato={annoSelezionato}
                 setAnnoSelezionato={setAnnoSelezionato}
               />
             )}
 
-            {currentPage === 'fatture' && (
+            {currentPage === "fatture" && (
               <FatturePage
                 setShowModal={setShowModal}
                 setEditingFattura={setEditingFattura}
               />
             )}
 
-            {currentPage === 'calendario' && (
+            {currentPage === "calendario" && (
               <Calendario
                 setShowModal={setShowModal}
                 setSelectedDate={setSelectedDate}
                 setEditingWorkLog={setEditingWorkLog}
+                setSelectedScadenzeDate={setSelectedScadenzeDate}
               />
             )}
 
-            {currentPage === 'fattura-cortesia' && (
-              <FatturaCortesia />
-            )}
+            {currentPage === "fattura-cortesia" && <FatturaCortesia />}
 
-            {currentPage === 'impostazioni' && (
+            {currentPage === "scadenze" && <Scadenze />}
+
+            {currentPage === "impostazioni" && (
               <Impostazioni
                 setShowModal={setShowModal}
                 setEditingCliente={setEditingCliente}
@@ -281,7 +473,7 @@ function ForfettarioAppInner() {
 
         {/* MODALS - Lazy loaded, rendered only when open */}
         <Suspense fallback={null}>
-          {showModal === 'upload-fattura' && (
+          {showModal === "upload-fattura" && (
             <UploadFatturaModal
               isOpen={true}
               onClose={() => setShowModal(null)}
@@ -289,7 +481,7 @@ function ForfettarioAppInner() {
             />
           )}
 
-          {showModal === 'batch-upload-fattura' && (
+          {showModal === "batch-upload-fattura" && (
             <BatchUploadModal
               isOpen={true}
               onClose={() => setShowModal(null)}
@@ -297,7 +489,7 @@ function ForfettarioAppInner() {
             />
           )}
 
-          {showModal === 'upload-zip' && (
+          {showModal === "upload-zip" && (
             <UploadZipModal
               isOpen={true}
               onClose={() => setShowModal(null)}
@@ -305,7 +497,7 @@ function ForfettarioAppInner() {
             />
           )}
 
-          {showModal === 'import-summary' && (
+          {showModal === "import-summary" && (
             <ImportSummaryModal
               isOpen={true}
               onClose={() => setShowModal(null)}
@@ -313,7 +505,7 @@ function ForfettarioAppInner() {
             />
           )}
 
-          {showModal === 'add-cliente' && (
+          {showModal === "add-cliente" && (
             <AddClienteModal
               isOpen={true}
               onClose={() => setShowModal(null)}
@@ -325,19 +517,19 @@ function ForfettarioAppInner() {
                 const cliente: Cliente = {
                   id: Date.now().toString(),
                   nome: newCliente.nome,
-                  piva: newCliente.piva || '',
-                  email: newCliente.email || ''
+                  piva: newCliente.piva || "",
+                  email: newCliente.email || "",
                 };
 
                 await addCliente(cliente);
-                setNewCliente({ nome: '', piva: '', email: '' });
+                setNewCliente({ nome: "", piva: "", email: "" });
                 setShowModal(null);
-                showToast('Cliente aggiunto!');
+                showToast("Cliente aggiunto!");
               }}
             />
           )}
 
-          {showModal === 'edit-cliente' && (
+          {showModal === "edit-cliente" && (
             <EditClienteModal
               isOpen={true}
               onClose={() => setShowModal(null)}
@@ -349,12 +541,12 @@ function ForfettarioAppInner() {
                 await updateCliente(editingCliente);
                 setEditingCliente(null);
                 setShowModal(null);
-                showToast('Cliente aggiornato!');
+                showToast("Cliente aggiornato!");
               }}
             />
           )}
 
-          {showModal === 'add-work' && (
+          {showModal === "add-work" && (
             <AddWorkLogModal
               isOpen={true}
               onClose={() => setShowModal(null)}
@@ -363,26 +555,36 @@ function ForfettarioAppInner() {
               setNewWorkLog={setNewWorkLog}
               clienti={clienti}
               onAdd={async () => {
-                if (!selectedDate || !newWorkLog.clienteId || newWorkLog.quantita === undefined) return;
+                if (
+                  !selectedDate ||
+                  !newWorkLog.clienteId ||
+                  newWorkLog.quantita === undefined
+                )
+                  return;
 
                 const workLog = {
                   id: Date.now().toString(),
                   clienteId: newWorkLog.clienteId,
                   data: selectedDate,
-                  tipo: newWorkLog.tipo || 'ore',
+                  tipo: newWorkLog.tipo || "ore",
                   quantita: newWorkLog.quantita,
-                  note: newWorkLog.note || ''
+                  note: newWorkLog.note || "",
                 };
 
                 await addWorkLog(workLog);
-                setNewWorkLog({ clienteId: '', quantita: undefined, tipo: 'ore', note: '' });
+                setNewWorkLog({
+                  clienteId: "",
+                  quantita: undefined,
+                  tipo: "ore",
+                  note: "",
+                });
                 setShowModal(null);
-                showToast('Lavoro registrato!');
+                showToast("Lavoro registrato!");
               }}
             />
           )}
 
-          {showModal === 'import' && (
+          {showModal === "import" && (
             <ImportBackupModal
               isOpen={true}
               onClose={() => setShowModal(null)}
@@ -390,7 +592,7 @@ function ForfettarioAppInner() {
             />
           )}
 
-          {showModal === 'edit-work' && (
+          {showModal === "edit-work" && (
             <EditWorkLogModal
               isOpen={true}
               onClose={() => setShowModal(null)}
@@ -403,12 +605,12 @@ function ForfettarioAppInner() {
                 await updateWorkLog(editingWorkLog);
                 setEditingWorkLog(null);
                 setShowModal(null);
-                showToast('Attività aggiornata!');
+                showToast("Attività aggiornata!");
               }}
             />
           )}
 
-          {showModal === 'edit-data-incasso' && (
+          {showModal === "edit-data-incasso" && (
             <EditDataIncassoModal
               isOpen={true}
               onClose={() => setShowModal(null)}
@@ -420,29 +622,76 @@ function ForfettarioAppInner() {
                 await updateFattura(editingFattura);
                 setEditingFattura(null);
                 setShowModal(null);
-                showToast('Data incasso aggiornata!');
+                showToast("Data incasso aggiornata!");
               }}
             />
           )}
 
-          {showModal === 'courtesy-invoice' && (
+          {showModal === "courtesy-invoice" && (
             <CourtesyInvoiceModal
               isOpen={true}
               onClose={() => setShowModal(null)}
             />
           )}
 
-          {showModal === 'manage-services' && (
+          {showModal === "manage-services" && (
             <ManageServicesModal
               isOpen={true}
               onClose={() => setShowModal(null)}
             />
           )}
 
-          {showModal === 'nuova-fattura' && (
+          {showModal === "nuova-fattura" && (
             <NuovaFatturaModal
               isOpen={true}
               onClose={() => setShowModal(null)}
+            />
+          )}
+
+          {showModal === "scadenze-detail" && (
+            <ScadenzaDetailModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              selectedDate={selectedScadenzeDate}
+            />
+          )}
+
+          {showModal === "calendar-day" && (
+            <CalendarDayModal
+              isOpen={true}
+              onClose={() => setShowModal(null)}
+              selectedDate={selectedDate}
+              newWorkLog={newWorkLog}
+              setNewWorkLog={setNewWorkLog}
+              clienti={clienti}
+              onAddWorkLog={async () => {
+                if (
+                  !selectedDate ||
+                  !newWorkLog.clienteId ||
+                  newWorkLog.quantita === undefined
+                )
+                  return;
+
+                const workLog = {
+                  id: Date.now().toString(),
+                  clienteId: newWorkLog.clienteId,
+                  data: selectedDate,
+                  tipo: newWorkLog.tipo || "ore",
+                  quantita: newWorkLog.quantita,
+                  note: newWorkLog.note || "",
+                };
+
+                await addWorkLog(workLog);
+                setNewWorkLog({
+                  clienteId: "",
+                  quantita: undefined,
+                  tipo: "ore",
+                  note: "",
+                });
+                setShowModal(null);
+                showToast("Lavoro registrato!");
+              }}
+              initialTab={selectedScadenzeDate ? "scadenze" : "lavoro"}
             />
           )}
         </Suspense>

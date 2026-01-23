@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useCallback, ReactNode, useEffect, useRef } from 'react';
-import type { Config, Cliente, Fattura, WorkLog, Toast } from '../types';
+import type { Config, Cliente, Fattura, WorkLog, Toast, Scadenza } from '../types';
 import { useDatabase } from '../hooks/useDatabase';
 import { useToast } from '../hooks/useToast';
 import { useConfig } from '../hooks/useConfig';
 import { useClienti } from '../hooks/useClienti';
 import { useFatture } from '../hooks/useFatture';
 import { useWorkLogs } from '../hooks/useWorkLogs';
+import { useScadenze } from '../hooks/useScadenze';
 import { useFolderSync } from '../hooks/useFolderSync';
 
 // Define the context value interface
@@ -44,6 +45,17 @@ interface AppContextValue {
   updateWorkLog: (workLog: WorkLog) => Promise<void>;
   removeWorkLog: (id: string) => Promise<void>;
 
+  // Scadenze
+  scadenze: Scadenza[];
+  setScadenze: React.Dispatch<React.SetStateAction<Scadenza[]>>;
+  addScadenza: (scadenza: Scadenza) => Promise<void>;
+  updateScadenza: (scadenza: Scadenza) => Promise<void>;
+  removeScadenza: (id: string) => Promise<void>;
+  removeScadenzeByYear: (annoVersamento: number) => Promise<void>;
+  bulkSaveScadenze: (scadenze: Scadenza[]) => Promise<void>;
+  getScadenzeByYear: (annoVersamento: number) => Scadenza[];
+  getPaidAccontiForYear: (annoRiferimento: number) => { irpefPaid: number; inpsPaid: number };
+
   // Import/Export
   exportData: () => Promise<void>;
   importData: (data: Record<string, any[]>) => Promise<void>;
@@ -71,19 +83,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { clienti, setClienti, addCliente, updateCliente, removeCliente } = useClienti(dbManager, dbReady);
   const { fatture, setFatture, addFattura, updateFattura, removeFattura } = useFatture(dbManager, dbReady);
   const { workLogs, setWorkLogs, addWorkLog, updateWorkLog, removeWorkLog } = useWorkLogs(dbManager, dbReady);
+  const { scadenze, setScadenze, addScadenza, updateScadenza, removeScadenza, removeScadenzeByYear, bulkSaveScadenze, getScadenzeByYear, getPaidAccontiForYear } = useScadenze(dbManager, dbReady);
 
   // Refs to hold setters for folder sync callback
   const setConfigRef = useRef(setConfig);
   const setClientiRef = useRef(setClienti);
   const setFattureRef = useRef(setFatture);
   const setWorkLogsRef = useRef(setWorkLogs);
+  const setScadenzeRef = useRef(setScadenze);
 
   useEffect(() => {
     setConfigRef.current = setConfig;
     setClientiRef.current = setClienti;
     setFattureRef.current = setFatture;
     setWorkLogsRef.current = setWorkLogs;
-  }, [setConfig, setClienti, setFatture, setWorkLogs]);
+    setScadenzeRef.current = setScadenze;
+  }, [setConfig, setClienti, setFatture, setWorkLogs, setScadenze]);
 
   // Folder sync with load on startup
   const handleDataLoaded = useCallback(async (data: Record<string, any[]>) => {
@@ -94,6 +109,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (data.clienti) setClientiRef.current(data.clienti);
     if (data.fatture) setFattureRef.current(data.fatture);
     if (data.workLogs) setWorkLogsRef.current(data.workLogs);
+    if (data.scadenze) setScadenzeRef.current(data.scadenze);
   }, [dbManager]);
 
   const {
@@ -120,14 +136,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!isInitialLoadDone || !syncFolderHandle) return;
 
     // Create a simple hash of current data to detect changes
-    const currentData = JSON.stringify({ config, clienti, fatture, workLogs });
+    const currentData = JSON.stringify({ config, clienti, fatture, workLogs, scadenze });
 
     if (prevDataRef.current && prevDataRef.current !== currentData) {
       syncToFolder();
     }
 
     prevDataRef.current = currentData;
-  }, [config, clienti, fatture, workLogs, isInitialLoadDone, syncFolderHandle, syncToFolder]);
+  }, [config, clienti, fatture, workLogs, scadenze, isInitialLoadDone, syncFolderHandle, syncToFolder]);
 
   // Export/Import handlers
   const exportData = useCallback(async () => {
@@ -152,24 +168,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await dbManager.importAll(data);
 
       // Reload all data from DB
-      const [savedConfig, savedClienti, savedFatture, savedWorkLogs] = await Promise.all([
+      const [savedConfig, savedClienti, savedFatture, savedWorkLogs, savedScadenze] = await Promise.all([
         dbManager.get('config', 'main'),
         dbManager.getAll('clienti'),
         dbManager.getAll('fatture'),
-        dbManager.getAll('workLogs')
+        dbManager.getAll('workLogs'),
+        dbManager.getAll('scadenze')
       ]);
 
       if (savedConfig) setConfig(savedConfig);
       setClienti(savedClienti || []);
       setFatture(savedFatture || []);
       setWorkLogs(savedWorkLogs || []);
+      setScadenze(savedScadenze || []);
 
       showToast('Dati importati!');
     } catch (error) {
       showToast('Errore import', 'error');
       throw error;
     }
-  }, [dbManager, setConfig, setClienti, setFatture, setWorkLogs, showToast]);
+  }, [dbManager, setConfig, setClienti, setFatture, setWorkLogs, setScadenze, showToast]);
 
   // Show error toast if database fails
   React.useEffect(() => {
@@ -201,6 +219,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     addWorkLog,
     updateWorkLog,
     removeWorkLog,
+    scadenze,
+    setScadenze,
+    addScadenza,
+    updateScadenza,
+    removeScadenza,
+    removeScadenzeByYear,
+    bulkSaveScadenze,
+    getScadenzeByYear,
+    getPaidAccontiForYear,
     exportData,
     importData,
     syncFolderHandle,

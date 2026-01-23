@@ -41,3 +41,14 @@ export const isToday = (date: Date): boolean => {
     date.getMonth() === today.getMonth() &&
     date.getFullYear() === today.getFullYear();
 };
+
+export const adjustForWeekend = (date: Date): Date => {
+  const day = date.getDay();
+  if (day === 6) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 2);
+  }
+  if (day === 0) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1);
+  }
+  return date;
+};

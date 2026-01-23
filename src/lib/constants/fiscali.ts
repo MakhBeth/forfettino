@@ -2,8 +2,8 @@ import type { Config } from '../../types';
 
 // Database constants
 export const DB_NAME = 'ForfettarioDB';
-export const DB_VERSION = 1;
-export const STORES = ['config', 'clienti', 'fatture', 'workLogs'] as const;
+export const DB_VERSION = 2;
+export const STORES = ['config', 'clienti', 'fatture', 'workLogs', 'scadenze'] as const;
 
 // Fiscal constants
 export const LIMITE_FATTURATO = 85000;
@@ -18,6 +18,12 @@ export const COEFFICIENTI_ATECO: Record<string, number> = {
   '73': 78, '74': 78, '69': 78, '85': 78, '86': 78,
   'default': 78
 };
+
+// Payment scheduling constants
+export const INTERESSE_RATEIZZAZIONE_MENSILE = 0.0033; // 0.33% monthly interest
+export const GIORNO_SCADENZA_RATE = 16; // Standard monthly deadline
+export const GIORNO_SCADENZA_AGOSTO = 20; // August exception
+export const GIORNO_SCADENZA_SALDO = 30; // June 30 and November 30
 
 // Default configuration
 export const DEFAULT_CONFIG: Config = {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Trash2, ArrowUpDown, Edit, Palmtree } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, ArrowUpDown, Edit, Palmtree, CalendarClock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getCalendarDays, formatDate } from '../../lib/utils/dateHelpers';
 import { getClientColor } from '../../lib/utils/colorUtils';
@@ -33,14 +33,15 @@ interface CalendarioProps {
   setShowModal: (modal: string | null) => void;
   setSelectedDate: (date: string) => void;
   setEditingWorkLog: (workLog: WorkLog) => void;
+  setSelectedScadenzeDate: (date: string) => void;
 }
 
 type RecapSortField = 'cliente' | 'quantita' | 'tariffa' | 'totale';
 type ActivitySortField = 'data' | 'cliente' | 'durata';
 type SortDirection = 'asc' | 'desc';
 
-export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }: CalendarioProps) {
-  const { clienti, workLogs, removeWorkLog, updateWorkLog, addWorkLog } = useApp();
+export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, setSelectedScadenzeDate }: CalendarioProps) {
+  const { clienti, workLogs, removeWorkLog, updateWorkLog, addWorkLog, scadenze } = useApp();
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [recapSort, setRecapSort] = useState<{ field: RecapSortField; direction: SortDirection }>({ field: 'totale', direction: 'desc' });
   const [activitySort, setActivitySort] = useState<{ field: ActivitySortField; direction: SortDirection }>({ field: 'data', direction: 'desc' });
@@ -224,7 +225,9 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
             const dayOfWeek = day.date.getDay();
             const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
             const dayLogs = workLogs.filter(w => w.data === dateStr);
+            const dayScadenze = scadenze.filter(s => s.date === dateStr);
             const hasWork = dayLogs.length > 0;
+            const hasScadenze = dayScadenze.length > 0;
 
             // Group logs by client
             const clientData: Array<{ cliente: Cliente; total: number; tipo: 'ore' | 'giornata'; logs: typeof dayLogs; isVacation: boolean }> = [];
@@ -257,12 +260,13 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
 
             const primaryClient = clientData[0]?.cliente;
             const primaryColor = primaryClient ? getClientDisplayColor(primaryClient, primaryClient.id) : null;
+            const scadenzaColor = hasScadenze ? (dayScadenze.every(s => s.pagato) ? 'var(--accent-green)' : 'var(--accent-red)') : null;
 
             return (
               <div
                 key={i}
                 className={`calendar-day ${day.otherMonth ? 'other-month' : ''} ${dateStr === today ? 'today' : ''} ${isWeekendDay ? 'weekend' : ''} ${hasWork ? 'has-work' : ''} ${draggedWorkLog ? 'drop-target' : ''} ${vacationMode ? 'vacation-mode' : ''}`}
-                style={hasWork && primaryColor ? { backgroundColor: hexToRgba(primaryColor, 0.1) } : undefined}
+                style={hasScadenze && !hasWork ? { backgroundColor: hexToRgba(scadenzaColor === 'var(--accent-green)' ? '#047857' : '#dc2626', 0.1) } : (hasWork && primaryColor ? { backgroundColor: hexToRgba(primaryColor, 0.1) } : undefined)}
                 onClick={async () => {
                   if (!day.otherMonth && !draggedWorkLog) {
                     if (vacationMode) {
@@ -283,7 +287,12 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
                       }
                     } else {
                       setSelectedDate(dateStr);
-                      setShowModal('add-work');
+                      if (hasScadenze) {
+                        setSelectedScadenzeDate(dateStr);
+                        setShowModal('calendar-day');
+                      } else {
+                        setShowModal('add-work');
+                      }
                     }
                   }
                 }}
@@ -313,16 +322,42 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
                 aria-label={`${day.date.getDate()} ${currentMonth.toLocaleString('it-IT', { month: 'long' })}${hasWork ? `, ${clientData.map(c => `${c.cliente.nome}: ${c.total}`).join(', ')}` : ''}`}
                 aria-current={dateStr === today ? 'date' : undefined}
               >
-                {hasWork && clientData.length > 0 && (
+                {(hasWork || hasScadenze) && (
                   <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 2 }} aria-hidden="true">
+                    {hasScadenze && (
+                      <CalendarClock size={10} style={{ color: dayScadenze.every(s => s.pagato) ? 'var(--accent-green)' : 'var(--accent-red)' }} />
+                    )}
                     {clientData.map(({ cliente }) => (
                       <div key={cliente.id} style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: getClientDisplayColor(cliente, cliente.id) }} />
                     ))}
                   </div>
                 )}
+
                 <div className="calendar-day-number" aria-hidden="true">{day.date.getDate()}</div>
-                {hasWork && clientData.length > 0 && (
+                {(hasWork || hasScadenze) && (
                   <div className="calendar-day-preview" aria-hidden="true" style={{ width: '100%', overflow: 'hidden' }}>
+                    {hasScadenze && (() => {
+                      const totalTasse = dayScadenze.reduce((sum, s) => sum + s.totale, 0);
+                      const allPaid = dayScadenze.every(s => s.pagato);
+                      const somePaid = dayScadenze.some(s => s.pagato);
+                      return (
+                        <div
+                          style={{ 
+                            color: allPaid ? 'var(--accent-green)' : 'var(--accent-red)', 
+                            fontSize: '0.6rem', 
+                            whiteSpace: 'nowrap', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis', 
+                            lineHeight: 1.2,
+                            textDecoration: allPaid ? 'line-through' : undefined,
+                            opacity: allPaid ? 0.7 : 1,
+                          }}
+                          title={`Tasse: €${totalTasse.toFixed(2)} (${dayScadenze.length} voci)`}
+                        >
+                          Tasse €{Math.round(totalTasse)}{somePaid && !allPaid ? '*' : ''}
+                        </div>
+                      );
+                    })()}
                     {clientData.map(({ cliente, total, tipo, logs }) => {
                       const color = getClientDisplayColor(cliente, cliente.id);
                       const unit = tipo === 'giornata' ? 'gg' : 'h';

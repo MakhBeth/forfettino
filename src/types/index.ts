@@ -3,7 +3,7 @@
 // Special client ID for vacation/holiday entries (not shown in client list)
 export const VACATION_CLIENT_ID = '__vacation__';
 
-export type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs';
+export type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs' | 'scadenze';
 
 export interface Cliente {
   id: string;
@@ -154,4 +154,54 @@ export interface NuovaFatturaDraft {
   numero: string;
   data: string; // YYYY-MM-DD
   righe: NuovaFatturaRiga[];
+}
+
+// Payment Scheduling Types (Regime Forfettario)
+export interface PaymentScheduleInput {
+  totalTaxSaldo: number;         // Balance for previous year (IRPEF)
+  totalTax1stAcconto: number;    // 40% Tax Advance
+  totalTax2ndAcconto: number;    // 60% Tax Advance
+  totalInpsSaldo: number;        // Social Security Balance
+  totalInps1stAcconto: number;   // 40% INPS Advance
+  totalInps2ndAcconto: number;   // 60% INPS Advance
+  numberOfTranches: 1 | 2 | 3 | 4 | 5 | 6;
+  fiscalYear: number;
+}
+
+export interface PaymentComponents {
+  taxSaldo: number;
+  taxAcconto: number;
+  inpsSaldo: number;
+  inpsAcconto: number;
+}
+
+export interface PaymentScheduleItem {
+  date: string; // YYYY-MM-DD
+  label: string;
+  principalAmount: number;
+  interestAmount: number;
+  totalAmount: number;
+  components: PaymentComponents;
+}
+
+export type ScadenzaTipo = 'saldo_irpef' | 'acconto_irpef' | 'saldo_inps' | 'acconto_inps';
+
+export interface Scadenza {
+  id: string;
+  visibleId: string;
+  annoRiferimento: number;
+  annoVersamento: number;
+  date: string; // YYYY-MM-DD
+  tipo: ScadenzaTipo;
+  label: string;
+  importo: number;
+  interessi: number;
+  totale: number;
+  pagato: boolean;
+  dataPagamento?: string; // YYYY-MM-DD
+  trancheIndex?: number;
+  totalTranches?: number;
+  // Acconti values used when generating this scadenza (for display/regeneration)
+  accontiIrpefUsed?: number;
+  accontiInpsUsed?: number;
 }

@@ -32,6 +32,9 @@ export class IndexedDBManager {
         if (!db.objectStoreNames.contains('workLogs')) {
           db.createObjectStore('workLogs', { keyPath: 'id' });
         }
+        if (!db.objectStoreNames.contains('scadenze')) {
+          db.createObjectStore('scadenze', { keyPath: 'id' });
+        }
       };
     });
   }
