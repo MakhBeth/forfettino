@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
-import { Settings, FileText, LayoutDashboard, Calendar, Download, Upload, Github, FilePlus } from 'lucide-react';
+import { Settings, FileText, LayoutDashboard, Calendar, Download, Upload, Github, FilePlus, Calculator } from 'lucide-react';
 import { AppProvider, useApp } from '../context/AppContext';
 import { Toast } from './shared/Toast';
 import { LoadingSpinner } from './shared/LoadingSpinner';
@@ -15,6 +15,7 @@ const FatturePage = lazy(() => import('./pages/Fatture').then(m => ({ default: m
 const Calendario = lazy(() => import('./pages/Calendario').then(m => ({ default: m.Calendario })));
 const Impostazioni = lazy(() => import('./pages/Impostazioni').then(m => ({ default: m.Impostazioni })));
 const FatturaCortesia = lazy(() => import('./pages/FatturaCortesia').then(m => ({ default: m.FatturaCortesia })));
+const Simulatore = lazy(() => import('./pages/Simulatore').then(m => ({ default: m.Simulatore })));
 
 // Lazy load modals
 const UploadFatturaModal = lazy(() => import('./modals/UploadFatturaModal').then(m => ({ default: m.UploadFatturaModal })));
@@ -208,6 +209,9 @@ function ForfettarioAppInner() {
             <button type="button" className={`nav-item ${currentPage === 'fattura-cortesia' ? 'active' : ''}`} onClick={() => setCurrentPage('fattura-cortesia')} aria-current={currentPage === 'fattura-cortesia' ? 'page' : undefined}>
               <FilePlus size={20} aria-hidden="true" /> Fattura di Cortesia
             </button>
+            <button type="button" className={`nav-item ${currentPage === 'simulatore' ? 'active' : ''}`} onClick={() => setCurrentPage('simulatore')} aria-current={currentPage === 'simulatore' ? 'page' : undefined}>
+              <Calculator size={20} aria-hidden="true" /> Simulatore
+            </button>
             <button type="button" className={`nav-item ${currentPage === 'impostazioni' ? 'active' : ''}`} onClick={() => setCurrentPage('impostazioni')} aria-current={currentPage === 'impostazioni' ? 'page' : undefined}>
               <Settings size={20} aria-hidden="true" /> Impostazioni
             </button>
@@ -263,6 +267,10 @@ function ForfettarioAppInner() {
 
             {currentPage === 'fattura-cortesia' && (
               <FatturaCortesia />
+            )}
+
+            {currentPage === 'simulatore' && (
+              <Simulatore />
             )}
 
             {currentPage === 'impostazioni' && (
