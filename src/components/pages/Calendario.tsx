@@ -158,6 +158,35 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
   ));
   const totalYearWorkedDays = yearWorkedDates.length;
 
+  // Yearly Recap Calculation (per client)
+  const yearlyRecapData = clienti
+    .map(cliente => {
+      const clientLogs = workLogs.filter(log => {
+        const logDate = new Date(log.data);
+        const isInYear = logDate >= yearStart && logDate <= yearEnd;
+
+        if (cliente.billingStartDate) {
+          const billingStart = new Date(cliente.billingStartDate);
+          return isInYear && log.clienteId === cliente.id && logDate >= billingStart;
+        }
+
+        return isInYear && log.clienteId === cliente.id;
+      });
+
+      if (clientLogs.length === 0) return null;
+
+      const totalQuantita = clientLogs.reduce((sum, log) => sum + getWorkLogQuantita(log), 0);
+      const amount = cliente.rate ? totalQuantita * cliente.rate : null;
+
+      return {
+        cliente,
+        totalQuantita,
+        amount,
+        unit: cliente.billingUnit || 'ore'
+      };
+    })
+    .filter(item => item !== null);
+
   return (
     <>
       <div className="page-header">
@@ -386,6 +415,47 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
               </tr>
             </tbody>
           </table>
+          </div>
+        </div>
+      )}
+
+      {yearlyRecapData.length > 0 && (
+        <div className="card" style={{ padding: '12px 16px' }}>
+          <h3 style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
+            Riepilogo Annuale {currentMonth.getFullYear()}
+          </h3>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {[...yearlyRecapData].sort((a, b) => (b.amount || 0) - (a.amount || 0)).map(({ cliente, totalQuantita, amount, unit }) => (
+              <div
+                key={cliente.id}
+                style={{
+                  flex: '1 1 auto',
+                  minWidth: 140,
+                  padding: '10px 12px',
+                  background: 'var(--bg-secondary)',
+                  borderRadius: 8,
+                  borderLeft: `3px solid ${getClientDisplayColor(cliente, cliente.id)}`
+                }}
+              >
+                <div style={{ fontSize: '0.8rem', fontWeight: 500, marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {cliente.nome}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    {formatNumber(totalQuantita)} {unit === 'ore' ? 'h' : 'gg'}
+                  </span>
+                  <span style={{ fontFamily: 'Space Mono', fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-green)' }}>
+                    {amount !== null ? `€${amount.toFixed(0)}` : '-'}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 12, textAlign: 'right', fontSize: '0.85rem' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Totale Anno: </span>
+            <span style={{ fontFamily: 'Space Mono', fontWeight: 600, color: 'var(--accent-green)' }}>
+              €{yearlyRecapData.reduce((sum, item) => sum + (item.amount || 0), 0).toFixed(2)}
+            </span>
           </div>
         </div>
       )}
