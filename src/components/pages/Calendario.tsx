@@ -320,7 +320,7 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
                     setDraggedWorkLog(null);
                   }
                 }}
-                aria-label={`${day.date.getDate()} ${currentMonth.toLocaleString('it-IT', { month: 'long' })}${hasWork ? `, ${clientData.map(c => `${c.cliente.nome}: ${c.total}`).join(', ')}` : ''}`}
+                aria-label={`${day.date.getDate()} ${currentMonth.toLocaleString('it-IT', { month: 'long' })}${hasWork ? `, ${clientData.map(c => `${c.cliente.nome}: ${c.total}`).join(', ')}` : ''}${hasScadenze ? `, ${dayScadenze.length} scadenz${dayScadenze.length === 1 ? 'a' : 'e'} (${dayScadenze.every(s => s.pagato) ? dayScadenze.length === 1 ? 'pagata' : 'tutte pagate' : dayScadenze.every(s => !s.pagato) ? dayScadenze.length === 1 ? 'non pagata' : 'nessuna pagata' : `${dayScadenze.filter(s => !s.pagato).length} non paga${dayScadenze.filter(s => !s.pagato).length === 1 ? 'ta' : 'te'}`})` : ''}`}
                 aria-current={dateStr === today ? 'date' : undefined}
               >
                 {(hasWork || hasScadenze) && (

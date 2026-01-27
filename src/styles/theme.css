@@ -292,8 +292,6 @@ select.input-field option {
 .calendar-day.vacation-mode { cursor: crosshair; }
 .calendar-day.vacation-mode:hover { background: rgba(245, 158, 11, 0.2); }
 
-.calendar-day:hover .calendar-day-hover-actions { opacity: 1 !important; }
-
 .calendar-day-number {
   font-weight: 600;
   margin-bottom: 4px;
