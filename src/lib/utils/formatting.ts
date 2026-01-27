@@ -13,13 +13,21 @@ export const formatCurrency = (amount: number): string => {
   }).format(amount);
 };
 
+export type CurrencyPartType = 'integer' | 'group' | 'decimal' | 'fraction';
+
+export interface CurrencyPart {
+  type: CurrencyPartType;
+  value: string;
+  isDigit: boolean;
+}
+
 /**
  * Render a currency amount with monospace digits and proportional separators.
  * This reduces visual width while keeping digits aligned.
  * @param amount - The amount to format
- * @returns Object with parts for custom rendering
+ * @returns Array of parts for custom rendering
  */
-export const formatCurrencyParts = (amount: number): { digits: string; formatted: string }[] => {
+export const formatCurrencyParts = (amount: number): CurrencyPart[] => {
   const hasDecimals = amount % 1 !== 0;
   const parts = new Intl.NumberFormat('it-IT', {
     minimumFractionDigits: hasDecimals ? 2 : 0,
@@ -28,7 +36,8 @@ export const formatCurrencyParts = (amount: number): { digits: string; formatted
   }).formatToParts(amount);
 
   return parts.map(part => ({
-    digits: part.type === 'integer' || part.type === 'fraction' ? part.value : '',
-    formatted: part.value,
+    type: part.type as CurrencyPartType,
+    value: part.value,
+    isDigit: part.type === 'integer' || part.type === 'fraction',
   }));
 };
