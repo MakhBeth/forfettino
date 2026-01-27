@@ -23,6 +23,7 @@ import {
   autoPopulateConfig,
 } from "../lib/utils/configAutoPopulate";
 import type { Cliente, Fattura, ImportSummary, WorkLog } from "../types";
+import { useRoute, type Route } from "../hooks/useRoute";
 import "../styles/theme.css";
 
 // Lazy load pages
@@ -148,7 +149,7 @@ function ForfettarioAppInner() {
   // Initialize design style on app load
   useDesignStyle();
 
-  const [currentPage, setCurrentPage] = useState<string>("dashboard");
+  const { currentRoute: currentPage, navigate: setCurrentPage } = useRoute();
   const [showModal, setShowModal] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [annoSelezionato, setAnnoSelezionato] = useState<number>(
@@ -265,7 +266,7 @@ function ForfettarioAppInner() {
     }
   }, [isAltroMenuOpen]);
 
-  const handleAltroItemClick = (page: string) => {
+  const handleAltroItemClick = (page: Route) => {
     setCurrentPage(page);
     setIsAltroMenuOpen(false);
   };
@@ -588,6 +589,7 @@ function ForfettarioAppInner() {
               </a>
             </div>
             <div className="footer-privacy">🔒 All data stays local</div>
+            <div className="footer-disclaimer">💵 I conti sono solo stime</div>
             <div className="footer-link">
               <a
                 href="https://github.com/MakhBeth/forfettino"

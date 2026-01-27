@@ -427,6 +427,11 @@ dialog.modal:focus {
   font-size: 0.75rem;
 }
 
+.footer-disclaimer {
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
 .footer-link {
   margin-top: 8px;
 }
