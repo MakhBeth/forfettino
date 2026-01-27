@@ -197,8 +197,8 @@ export function FatturePage({ setShowModal, setEditingFattura }: FattureProps) {
                     Cliente {ordinamentoFatture.campo === 'clienteNome' && (ordinamentoFatture.direzione === 'asc' ? '↑' : '↓')}
                   </button>
                 </th>
-                <th scope="col" aria-sort={ordinamentoFatture.campo === 'importo' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
-                  <button type="button" onClick={() => handleSort('importo')}>
+                <th scope="col" style={{ textAlign: 'right' }} aria-sort={ordinamentoFatture.campo === 'importo' ? (ordinamentoFatture.direzione === 'asc' ? 'ascending' : 'descending') : undefined}>
+                  <button type="button" onClick={() => handleSort('importo')} style={{ justifyContent: 'flex-end' }}>
                     Importo {ordinamentoFatture.campo === 'importo' && (ordinamentoFatture.direzione === 'asc' ? '↑' : '↓')}
                   </button>
                 </th>
@@ -232,7 +232,7 @@ export function FatturePage({ setShowModal, setEditingFattura }: FattureProps) {
                       </div>
                     </td>
                     <td>{f.clienteNome || clienti.find(c => c.id === f.clienteId)?.nome || '-'}</td>
-                    <td style={{ fontWeight: 600 }}><Currency amount={f.importo} /></td>
+                    <td style={{ fontWeight: 600, textAlign: 'right' }}><Currency amount={f.importo} tabular /></td>
                     <td><button className="btn btn-danger" onClick={() => removeFattura(f.id)} aria-label="Elimina fattura"><Trash2 size={16} aria-hidden="true" /></button></td>
                   </tr>
                 );

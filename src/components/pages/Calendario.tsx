@@ -370,13 +370,13 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
                     Quantità <ArrowUpDown size={14} style={{ opacity: recapSort.field === 'quantita' ? 1 : 0.3 }} />
                   </button>
                 </th>
-                <th scope="col">
-                  <button type="button" className="sortable-header" onClick={() => toggleRecapSort('tariffa')}>
+                <th scope="col" style={{ textAlign: 'right' }}>
+                  <button type="button" className="sortable-header" onClick={() => toggleRecapSort('tariffa')} style={{ justifyContent: 'flex-end' }}>
                     Tariffa <ArrowUpDown size={14} style={{ opacity: recapSort.field === 'tariffa' ? 1 : 0.3 }} />
                   </button>
                 </th>
-                <th scope="col">
-                  <button type="button" className="sortable-header" onClick={() => toggleRecapSort('totale')}>
+                <th scope="col" style={{ textAlign: 'right' }}>
+                  <button type="button" className="sortable-header" onClick={() => toggleRecapSort('totale')} style={{ justifyContent: 'flex-end' }}>
                     Totale <ArrowUpDown size={14} style={{ opacity: recapSort.field === 'totale' ? 1 : 0.3 }} />
                   </button>
                 </th>
@@ -400,18 +400,18 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog }:
                       {formatNumber(totalQuantita)} {unit === 'ore' ? 'h' : 'gg'}
                     </span>
                   </td>
-                  <td>
-                    {cliente.rate ? <><Currency amount={cliente.rate} />/{unit === 'ore' ? 'h' : 'gg'}</> : '-'}
+                  <td style={{ textAlign: 'right' }}>
+                    {cliente.rate ? <><Currency amount={cliente.rate} tabular />/{unit === 'ore' ? 'h' : 'gg'}</> : '-'}
                   </td>
-                  <td style={{ fontWeight: 600, color: 'var(--accent-green)' }}>
-                    {amount !== null ? <Currency amount={amount} /> : '-'}
+                  <td style={{ fontWeight: 600, color: 'var(--accent-green)', textAlign: 'right' }}>
+                    {amount !== null ? <Currency amount={amount} tabular /> : '-'}
                   </td>
                 </tr>
               ))}
               <tr style={{ background: 'var(--bg-hover)', fontWeight: 600 }}>
                 <td colSpan={3} style={{ textAlign: 'right' }}>Totale Mese</td>
-                <td style={{ fontSize: '1.1rem', color: 'var(--accent-green)' }}>
-                  <Currency amount={recapData.reduce((sum, item) => sum + (item.amount || 0), 0)} />
+                <td style={{ fontSize: '1.1rem', color: 'var(--accent-green)', textAlign: 'right' }}>
+                  <Currency amount={recapData.reduce((sum, item) => sum + (item.amount || 0), 0)} tabular />
                 </td>
               </tr>
             </tbody>
