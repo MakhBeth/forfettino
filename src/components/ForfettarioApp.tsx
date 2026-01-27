@@ -9,6 +9,7 @@ import {
   Github,
   FilePlus,
   CalendarClock,
+  Calculator,
 } from "lucide-react";
 import { AppProvider, useApp } from "../context/AppContext";
 import { Toast } from "./shared/Toast";
@@ -43,6 +44,9 @@ const FatturaCortesia = lazy(() =>
 );
 const Scadenze = lazy(() =>
   import("./pages/Scadenze").then((m) => ({ default: m.Scadenze })),
+);
+const Simulatore = lazy(() =>
+  import("./pages/Simulatore").then((m) => ({ default: m.Simulatore })),
 );
 
 // Lazy load modals
@@ -380,6 +384,14 @@ function ForfettarioAppInner() {
             </button>
             <button
               type="button"
+              className={`nav-item ${currentPage === "simulatore" ? "active" : ""}`}
+              onClick={() => setCurrentPage("simulatore")}
+              aria-current={currentPage === "simulatore" ? "page" : undefined}
+            >
+              <Calculator size={20} aria-hidden="true" /> Simulatore
+            </button>
+            <button
+              type="button"
               className={`nav-item ${currentPage === "impostazioni" ? "active" : ""}`}
               onClick={() => setCurrentPage("impostazioni")}
               aria-current={currentPage === "impostazioni" ? "page" : undefined}
@@ -460,6 +472,8 @@ function ForfettarioAppInner() {
             {currentPage === "fattura-cortesia" && <FatturaCortesia />}
 
             {currentPage === "scadenze" && <Scadenze />}
+
+            {currentPage === "simulatore" && <Simulatore />}
 
             {currentPage === "impostazioni" && (
               <Impostazioni

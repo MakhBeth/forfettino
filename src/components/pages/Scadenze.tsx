@@ -4,6 +4,8 @@ import { useApp } from '../../context/AppContext';
 import { INPS_GESTIONE_SEPARATA, ALIQUOTA_RIDOTTA, ALIQUOTA_STANDARD, COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
 import { generatePaymentSchedule, calculateScheduleTotals } from '../../lib/utils/paymentScheduler';
 import { parseDateLocal, formatDateLong } from '../../lib/utils/dateHelpers';
+import { parseCurrency, formatCurrency } from '../../lib/utils/formatting';
+import { Currency } from '../ui/Currency';
 import type { PaymentScheduleInput, PaymentScheduleItem, Scadenza, ScadenzaTipo } from '../../types';
 
 type NumberOfTranches = 1 | 2 | 3 | 4 | 5 | 6;
@@ -74,15 +76,15 @@ export function Scadenze() {
   }, [fatture, annoRiferimento]);
 
   const fatturatoFromRecords = fattureAnnoRiferimento.reduce((sum, f) => sum + f.importo, 0);
-  const parsedManualFatturato = parseFloat(manualFatturato.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+  const parsedManualFatturato = parseCurrency(manualFatturato);
   const totaleFatturato = useManualFatturato ? parsedManualFatturato : fatturatoFromRecords;
   
   const redditoImponibile = totaleFatturato * (coefficienteMedio / 100);
   const irpefTotale = redditoImponibile * aliquotaIrpef;
   const inpsTotale = redditoImponibile * INPS_GESTIONE_SEPARATA;
   
-  const parsedAccontiIrpef = parseFloat(manualAccontiIrpef.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
-  const parsedAccontiInps = parseFloat(manualAccontiInps.replace(/[^\d.,]/g, '').replace(',', '.')) || 0;
+  const parsedAccontiIrpef = parseCurrency(manualAccontiIrpef);
+  const parsedAccontiInps = parseCurrency(manualAccontiInps);
 
   const taxAmounts = useMemo(() => {
     const taxSaldoLordo = irpefTotale;
@@ -122,10 +124,6 @@ export function Scadenze() {
 
   const schedule = useMemo(() => generatePaymentSchedule(scheduleInput), [scheduleInput]);
   const totals = useMemo(() => calculateScheduleTotals(schedule), [schedule]);
-
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
 
   const isUpcoming = (dateStr: string) => {
     const date = parseDateLocal(dateStr);
@@ -432,20 +430,20 @@ export function Scadenze() {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 24px', fontSize: '0.85rem' }}>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>Fatturato {annoRiferimento}: </span>
-              <strong style={{ color: useManualFatturato ? 'var(--accent-primary)' : 'var(--text-primary)' }}>€{formatCurrency(totaleFatturato)}</strong>
+              <strong style={{ color: useManualFatturato ? 'var(--accent-primary)' : 'var(--text-primary)' }}><Currency amount={totaleFatturato} /></strong>
             </div>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>Imponibile: </span>
-              <strong>€{formatCurrency(redditoImponibile)}</strong>
+              <strong><Currency amount={redditoImponibile} /></strong>
               <span style={{ color: 'var(--text-muted)' }}> ({coefficienteMedio}%)</span>
             </div>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>IRPEF dovuta: </span>
-              <strong>€{formatCurrency(irpefTotale)}</strong>
+              <strong><Currency amount={irpefTotale} /></strong>
             </div>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>INPS dovuta: </span>
-              <strong>€{formatCurrency(inpsTotale)}</strong>
+              <strong><Currency amount={inpsTotale} /></strong>
             </div>
           </div>
         </div>
@@ -517,15 +515,15 @@ export function Scadenze() {
               {taxAmounts.accontiIrpefPagati > 0 && (
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Saldo IRPEF: </span>
-                  <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>€{formatCurrency(taxAmounts.taxSaldoLordo)}</span>
-                  <span style={{ color: 'var(--accent-green)', fontWeight: 600, marginLeft: 8 }}>€{formatCurrency(taxAmounts.taxSaldo)}</span>
+                  <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}><Currency amount={taxAmounts.taxSaldoLordo} /></span>
+                  <span style={{ color: 'var(--accent-green)', fontWeight: 600, marginLeft: 8 }}><Currency amount={taxAmounts.taxSaldo} /></span>
                 </div>
               )}
               {taxAmounts.accontiInpsPagati > 0 && (
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Saldo INPS: </span>
-                  <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>€{formatCurrency(taxAmounts.inpsSaldoLordo)}</span>
-                  <span style={{ color: 'var(--accent-green)', fontWeight: 600, marginLeft: 8 }}>€{formatCurrency(taxAmounts.inpsSaldo)}</span>
+                  <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}><Currency amount={taxAmounts.inpsSaldoLordo} /></span>
+                  <span style={{ color: 'var(--accent-green)', fontWeight: 600, marginLeft: 8 }}><Currency amount={taxAmounts.inpsSaldo} /></span>
                 </div>
               )}
             </div>
@@ -536,17 +534,17 @@ export function Scadenze() {
       <div className="grid-3" style={{ marginBottom: 24 }}>
         <div className="card">
           <h2 className="card-title"><Euro size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />Totale Principale</h2>
-          <div className="stat-value" style={{ color: 'var(--accent-orange)' }}>€{formatCurrency(totals.totalPrincipal)}</div>
+          <div className="stat-value" style={{ color: 'var(--accent-orange)' }}><Currency amount={totals.totalPrincipal} /></div>
           <div className="stat-label">Capitale da versare</div>
         </div>
         <div className="card">
           <h2 className="card-title"><Percent size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />Interessi Rateizzazione</h2>
-          <div className="stat-value" style={{ color: numberOfTranches > 1 ? 'var(--accent-red)' : 'var(--text-muted)' }}>€{formatCurrency(totals.totalInterest)}</div>
+          <div className="stat-value" style={{ color: numberOfTranches > 1 ? 'var(--accent-red)' : 'var(--text-muted)' }}><Currency amount={totals.totalInterest} /></div>
           <div className="stat-label">0.33% mensile dalla 2ª rata</div>
         </div>
         <div className="card" style={{ background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(239,68,68,0.1) 100%)' }}>
           <h2 className="card-title"><CalendarClock size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />Totale da Versare</h2>
-          <div className="stat-value" style={{ fontSize: '2rem', color: 'var(--accent-red)' }}>€{formatCurrency(totals.grandTotal)}</div>
+          <div className="stat-value" style={{ fontSize: '2rem', color: 'var(--accent-red)' }}><Currency amount={totals.grandTotal} /></div>
           <div className="stat-label">Principale + interessi</div>
         </div>
       </div>
@@ -571,7 +569,7 @@ export function Scadenze() {
           <div style={{ marginBottom: 16, padding: '12px 16px', background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.3)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
             <Info size={18} style={{ color: '#fbbf24', flexShrink: 0 }} />
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Rateizzando pagherai <strong style={{ color: '#fbbf24' }}>€{formatCurrency(totals.totalInterest)}</strong> di interessi.
+              Rateizzando pagherai <strong style={{ color: '#fbbf24' }}><Currency amount={totals.totalInterest} /></strong> di interessi.
             </span>
           </div>
         )}
@@ -636,14 +634,14 @@ export function Scadenze() {
                         <td>
                           <span style={{ color: getTipoColor(scadenza.tipo), fontWeight: 500 }}>{scadenza.label}</span>
                         </td>
-                        <td style={{ textAlign: 'right', fontFamily: 'Space Mono, monospace', textDecoration: scadenza.pagato ? 'line-through' : undefined }}>
-                          €{formatCurrency(scadenza.importo)}
+                        <td style={{ textAlign: 'right', textDecoration: scadenza.pagato ? 'line-through' : undefined }}>
+                          <Currency amount={scadenza.importo} tabular />
                         </td>
                         <td style={{ textAlign: 'right', fontFamily: 'Space Mono, monospace', color: scadenza.interessi > 0 ? 'var(--accent-red)' : 'var(--text-muted)' }}>
                           {scadenza.interessi > 0 ? `+€${formatCurrency(scadenza.interessi)}` : '-'}
                         </td>
-                        <td style={{ textAlign: 'right', fontFamily: 'Space Mono, monospace', fontWeight: 600, color: scadenza.pagato ? 'var(--accent-green)' : 'var(--accent-orange)' }}>
-                          €{formatCurrency(scadenza.totale)}
+                        <td style={{ textAlign: 'right', fontWeight: 600, color: scadenza.pagato ? 'var(--accent-green)' : 'var(--accent-orange)' }}>
+                          <Currency amount={scadenza.totale} tabular />
                         </td>
                       </tr>
                     );
@@ -686,11 +684,11 @@ export function Scadenze() {
                             {item.components.inpsAcconto > 0 && ` · Acc. INPS €${formatCurrency(item.components.inpsAcconto)}`}
                           </div>
                         </td>
-                        <td style={{ textAlign: 'right', fontFamily: 'Space Mono, monospace' }}>€{formatCurrency(item.principalAmount)}</td>
+                        <td style={{ textAlign: 'right' }}><Currency amount={item.principalAmount} tabular /></td>
                         <td style={{ textAlign: 'right', fontFamily: 'Space Mono, monospace', color: item.interestAmount > 0 ? 'var(--accent-red)' : 'var(--text-muted)' }}>
                           {item.interestAmount > 0 ? `+€${formatCurrency(item.interestAmount)}` : '-'}
                         </td>
-                        <td style={{ textAlign: 'right', fontFamily: 'Space Mono, monospace', fontWeight: 600, color: 'var(--accent-orange)' }}>€{formatCurrency(item.totalAmount)}</td>
+                        <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--accent-orange)' }}><Currency amount={item.totalAmount} tabular /></td>
                       </tr>
                     );
                   })}

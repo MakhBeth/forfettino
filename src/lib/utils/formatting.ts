@@ -22,6 +22,29 @@ export interface CurrencyPart {
 }
 
 /**
+ * Parse a user-entered string (Italian locale) into a number.
+ * Handles "1.000,50" → 1000.50 by removing thousand separators (dots)
+ * before treating comma as decimal separator.
+ */
+export const parseCurrency = (value: string): number => {
+  const cleaned = value.replace(/[^\d.,]/g, '');
+  if (!cleaned) return 0;
+
+  const hasComma = cleaned.includes(',');
+  const hasDot = cleaned.includes('.');
+
+  if (hasComma && hasDot) {
+    return parseFloat(cleaned.replace(/\./g, '').replace(',', '.')) || 0;
+  }
+
+  if (hasComma) {
+    return parseFloat(cleaned.replace(',', '.')) || 0;
+  }
+
+  return parseFloat(cleaned) || 0;
+};
+
+/**
  * Render a currency amount with monospace digits and proportional separators.
  * This reduces visual width while keeping digits aligned.
  * @param amount - The amount to format
