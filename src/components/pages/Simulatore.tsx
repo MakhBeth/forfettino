@@ -208,18 +208,21 @@ export function Simulatore() {
                   value={coefficienteCustom !== "" ? coefficienteCustom : coefficienteDefault.toString()}
                   onChange={(e) => setCoefficienteCustom(e.target.value)}
                   style={{
-                    width: 60,
-                    padding: "4px 24px 4px 8px",
-                    fontSize: "0.85rem",
+                    width: "fit-content",
+                    minWidth: "4ch",
+                    maxWidth: "8ch",
+                    fieldSizing: "content",
+                    padding: "6px 28px 6px 10px",
+                    fontSize: "1rem",
                     fontWeight: 600,
                     background: "var(--bg-card)",
                     border: "1px solid var(--border)",
-                    borderRadius: 6,
+                    borderRadius: 8,
                     color: "var(--text-primary)",
                     fontFamily: "Space Mono, monospace",
-                  }}
+                  } as React.CSSProperties}
                 />
-                <span style={{ position: "absolute", right: 8, color: "var(--text-muted)" }}>%</span>
+                <span style={{ position: "absolute", right: 10, color: "var(--text-muted)", fontSize: "1rem" }}>%</span>
               </div>
               {config.codiciAteco.length > 0 && (
                 <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>
@@ -237,18 +240,21 @@ export function Simulatore() {
                   value={aliquotaIrpefCustom !== "" ? aliquotaIrpefCustom : (aliquotaIrpefDefault * 100).toString()}
                   onChange={(e) => setAliquotaIrpefCustom(e.target.value)}
                   style={{
-                    width: 50,
-                    padding: "4px 24px 4px 8px",
-                    fontSize: "0.85rem",
+                    width: "fit-content",
+                    minWidth: "3ch",
+                    maxWidth: "6ch",
+                    fieldSizing: "content",
+                    padding: "6px 28px 6px 10px",
+                    fontSize: "1rem",
                     fontWeight: 600,
                     background: "var(--bg-card)",
                     border: "1px solid var(--border)",
-                    borderRadius: 6,
+                    borderRadius: 8,
                     color: "var(--text-primary)",
                     fontFamily: "Space Mono, monospace",
-                  }}
+                  } as React.CSSProperties}
                 />
-                <span style={{ position: "absolute", right: 8, color: "var(--text-muted)" }}>%</span>
+                <span style={{ position: "absolute", right: 10, color: "var(--text-muted)", fontSize: "1rem" }}>%</span>
               </div>
               {aliquotaIrpefCustom === "" && config.aliquotaOverride !== null && (
                 <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>(custom)</span>
@@ -267,18 +273,21 @@ export function Simulatore() {
                   value={inpsCustom !== "" ? inpsCustom : (INPS_GESTIONE_SEPARATA * 100).toFixed(2)}
                   onChange={(e) => setInpsCustom(e.target.value)}
                   style={{
-                    width: 60,
-                    padding: "4px 24px 4px 8px",
-                    fontSize: "0.85rem",
+                    width: "fit-content",
+                    minWidth: "5ch",
+                    maxWidth: "8ch",
+                    fieldSizing: "content",
+                    padding: "6px 28px 6px 10px",
+                    fontSize: "1rem",
                     fontWeight: 600,
                     background: "var(--bg-card)",
                     border: "1px solid var(--border)",
-                    borderRadius: 6,
+                    borderRadius: 8,
                     color: "var(--text-primary)",
                     fontFamily: "Space Mono, monospace",
-                  }}
+                  } as React.CSSProperties}
                 />
-                <span style={{ position: "absolute", right: 8, color: "var(--text-muted)" }}>%</span>
+                <span style={{ position: "absolute", right: 10, color: "var(--text-muted)", fontSize: "1rem" }}>%</span>
               </div>
             </div>
           </div>
