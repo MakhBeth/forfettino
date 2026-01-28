@@ -244,7 +244,7 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
 
                 if (clienteId === VACATION_CLIENT_ID) {
                   // Vacation entry - create a fake client for display
-                  const vacationCliente: Cliente = { id: VACATION_CLIENT_ID, nome: '🏖️' };
+                  const vacationCliente: Cliente = { id: VACATION_CLIENT_ID, userId: '', nome: '🏖️' };
                   clientData.push({ cliente: vacationCliente, total, tipo: 'giornata', logs, isVacation: true });
                 } else {
                   const cliente = clienti.find(c => c.id === clienteId);

@@ -25,6 +25,10 @@ export const getDuplicateKey = (fattura: Fattura): string => {
   return computeDuplicateKey(fattura.numero, fattura.data, fattura.importo);
 };
 
+// Types without userId for batch import (userId will be added by hooks)
+type NewCliente = Omit<Cliente, 'userId'>;
+type NewFattura = Omit<Fattura, 'userId'>;
+
 // Shared function to process batch import
 // dbManager is optional - if null, DB save is skipped (caller handles persistence)
 export const processBatchXmlFiles = async (
@@ -35,8 +39,8 @@ export const processBatchXmlFiles = async (
   dbManager?: IndexedDBManager | null
 ): Promise<{
   summary: ImportSummary;
-  newFatture: Fattura[];
-  newClienti: Cliente[];
+  newFatture: NewFattura[];
+  newClienti: NewCliente[];
 }> => {
   const summary: ImportSummary = {
     total: xmlFiles.length,
@@ -46,8 +50,8 @@ export const processBatchXmlFiles = async (
     failedFiles: []
   };
 
-  const newFatture: Fattura[] = [];
-  const newClienti: Cliente[] = [];
+  const newFatture: NewFattura[] = [];
+  const newClienti: NewCliente[] = [];
   const existingDuplicateKeys = new Set(existingFatture.map(f => getDuplicateKey(f)));
 
   for (let i = 0; i < xmlFiles.length; i++) {
@@ -96,7 +100,7 @@ export const processBatchXmlFiles = async (
       }
 
       if (!clienteId && parsed.clienteNome) {
-        const nuovoCliente: Cliente = {
+        const nuovoCliente: NewCliente = {
           id: generateUniqueId(i),
           nome: parsed.clienteNome,
           piva: parsed.clientePiva,
@@ -106,7 +110,7 @@ export const processBatchXmlFiles = async (
         clienteId = nuovoCliente.id;
       }
 
-      const nuovaFattura: Fattura = {
+      const nuovaFattura: NewFattura = {
         id: generateUniqueId(i),
         numero: parsed.numero,
         importo: parsed.importo,

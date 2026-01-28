@@ -85,6 +85,12 @@ body {
   z-index: 100;
 }
 
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
 .logo {
   font-family: 'Space Mono', monospace;
   font-size: 1.4rem;
@@ -239,6 +245,8 @@ select.input-field option {
 .btn-secondary:hover { background: var(--bg-card); }
 .btn-success { background: var(--accent-green); color: white; }
 .btn-success:hover { background: #0d9668; }
+.btn-ghost { background: transparent; color: var(--accent-primary); border: 1px solid var(--accent-primary); }
+.btn-ghost:hover { background: rgba(4, 120, 87, 0.1); }
 .btn-danger { background: transparent; color: var(--accent-red); }
 .btn-danger:hover { background: rgba(239, 68, 68, 0.1); }
 .btn-sm { padding: 8px 16px; font-size: 0.85rem; }
@@ -471,6 +479,11 @@ dialog.modal:focus {
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 8px;
+  }
+
+  .sidebar-header {
+    flex: 1;
+    align-items: center;
   }
 
   .logo {
@@ -748,5 +761,195 @@ dialog.modal:focus {
 
   .tooltip::after {
     display: none;
+  }
+}
+
+/* User Selector Component */
+.user-selector {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.user-selector-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-selector-trigger:hover {
+  background: var(--bg-card);
+  border-color: var(--accent-primary);
+}
+
+.user-selector-trigger:focus-visible {
+  outline: 2px solid var(--accent-secondary);
+  outline-offset: 2px;
+}
+
+.user-selector-name {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-selector-chevron {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.user-selector-chevron.open {
+  transform: rotate(180deg);
+}
+
+.user-selector-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  padding: 8px;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.user-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.user-option:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.user-option:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -2px;
+}
+
+.user-option.active {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.user-option.active:hover {
+  background: var(--accent-secondary);
+}
+
+.user-selector-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 0;
+}
+
+.user-add-btn {
+  color: var(--accent-primary);
+}
+
+.user-add-btn:hover {
+  background: rgba(4, 120, 87, 0.1);
+  color: var(--accent-primary);
+}
+
+.user-add-form {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+}
+
+.user-add-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+.user-add-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+/* Compact version for mobile header */
+.user-selector-compact .user-selector-trigger {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  background: transparent;
+  border: none;
+}
+
+.user-selector-compact .user-selector-trigger:hover {
+  background: var(--bg-hover);
+}
+
+.user-selector-compact .user-selector-name {
+  max-width: 100px;
+}
+
+.user-selector-compact .user-selector-dropdown {
+  right: 0;
+  left: auto;
+  min-width: 200px;
+}
+
+/* Mobile header user selector */
+.mobile-header-user {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-header-user {
+    display: block;
+  }
+
+  /* Hide only the direct user-selector in sidebar, not the one in mobile-header-user */
+  .sidebar > .user-selector {
+    display: none;
+  }
+
+  .user-selector-compact {
+    margin-bottom: 0;
+  }
+
+  .user-selector-compact .user-selector-dropdown {
+    top: calc(100% + 8px);
   }
 }

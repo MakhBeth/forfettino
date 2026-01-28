@@ -143,8 +143,8 @@ export function Scadenze() {
 
   const round2 = (v: number) => Math.round(v * 100) / 100;
 
-  const convertScheduleToScadenze = (scheduleItems: PaymentScheduleItem[], accontiIrpef: number, accontiInps: number): Scadenza[] => {
-    const result: Scadenza[] = [];
+  const convertScheduleToScadenze = (scheduleItems: PaymentScheduleItem[], accontiIrpef: number, accontiInps: number): Array<Omit<Scadenza, 'userId'>> => {
+    const result: Array<Omit<Scadenza, 'userId'>> = [];
     let idCounter = Date.now();
 
     for (const item of scheduleItems) {

@@ -12,7 +12,8 @@ import type { IndexedDBManager } from '../lib/db/IndexedDBManager';
 interface UseFolderSyncOptions {
   dbManager: IndexedDBManager;
   dbReady: boolean;
-  onDataLoaded?: (data: Record<string, any[]>) => void;
+  isUsersInitialized: boolean;
+  onDataLoaded?: (data: Record<string, any[]>) => Promise<boolean> | void;
 }
 
 interface UseFolderSyncReturn {
@@ -30,6 +31,7 @@ interface UseFolderSyncReturn {
 export function useFolderSync({
   dbManager,
   dbReady,
+  isUsersInitialized,
   onDataLoaded
 }: UseFolderSyncOptions): UseFolderSyncReturn {
   const [syncFolderHandle, setSyncFolderHandle] = useState<FileSystemDirectoryHandle | null>(null);
@@ -65,7 +67,13 @@ export function useFolderSync({
 
       const remoteData = await readSyncFile(folderHandle);
       if (remoteData && onDataLoaded) {
-        await onDataLoaded(remoteData);
+        const wasMigrated = await onDataLoaded(remoteData);
+        // If data was migrated, write it back immediately
+        if (wasMigrated) {
+          console.log('[useFolderSync] Data was migrated on focus, writing back...');
+          const migratedData = await dbManager.exportAll();
+          await writeSyncFile(folderHandle, migratedData);
+        }
       }
       setLastSyncTime(new Date());
     } catch (err) {
@@ -73,27 +81,37 @@ export function useFolderSync({
     } finally {
       isLoadingRef.current = false;
     }
-  }, [onDataLoaded]);
+  }, [dbManager, onDataLoaded]);
 
   // Load from sync folder on startup
   useEffect(() => {
-    if (!dbReady || !isFileSystemAccessSupported()) {
-      setIsInitialLoadDone(true);
+    console.log('[useFolderSync] Effect running, dbReady:', dbReady, 'isUsersInitialized:', isUsersInitialized);
+    if (!dbReady || !isUsersInitialized || !isFileSystemAccessSupported()) {
+      console.log('[useFolderSync] Skipping - dbReady:', dbReady, 'isUsersInitialized:', isUsersInitialized, 'fileSystemSupported:', isFileSystemAccessSupported());
+      // Only mark initial load done if file system is not supported
+      if (!isFileSystemAccessSupported()) {
+        setIsInitialLoadDone(true);
+      }
       return;
     }
 
     async function initSyncFolder() {
+      console.log('[useFolderSync] initSyncFolder starting...');
       isLoadingRef.current = true;
 
       try {
+        console.log('[useFolderSync] Getting stored directory handle...');
         const handle = await getStoredDirectoryHandle();
+        console.log('[useFolderSync] Handle:', handle ? 'found' : 'not found');
         if (!handle) {
           setIsInitialLoadDone(true);
           isLoadingRef.current = false;
           return;
         }
 
+        console.log('[useFolderSync] Verifying permission...');
         const hasPermission = await verifyPermission(handle);
+        console.log('[useFolderSync] Permission:', hasPermission);
         if (!hasPermission) {
           setIsInitialLoadDone(true);
           isLoadingRef.current = false;
@@ -104,9 +122,20 @@ export function useFolderSync({
         setSyncFolderName(getFolderName(handle));
 
         // Try to read data from sync folder
+        console.log('[useFolderSync] Reading sync file...');
         const remoteData = await readSyncFile(handle);
+        console.log('[useFolderSync] Sync file read, data:', remoteData ? 'found' : 'not found');
         if (remoteData && onDataLoaded) {
-          await onDataLoaded(remoteData);
+          console.log('[useFolderSync] Calling onDataLoaded...');
+          const wasMigrated = await onDataLoaded(remoteData);
+          console.log('[useFolderSync] onDataLoaded complete, wasMigrated:', wasMigrated);
+          // If data was migrated, write it back immediately
+          if (wasMigrated) {
+            console.log('[useFolderSync] Writing migrated data back to sync folder...');
+            const migratedData = await dbManager.exportAll();
+            await writeSyncFile(handle, migratedData);
+            console.log('[useFolderSync] Write complete');
+          }
         }
 
         setLastSyncTime(new Date());
@@ -119,7 +148,7 @@ export function useFolderSync({
     }
 
     initSyncFolder();
-  }, [dbReady, onDataLoaded]);
+  }, [dbReady, isUsersInitialized, onDataLoaded]);
 
   // Reload from sync folder when window gains focus
   useEffect(() => {

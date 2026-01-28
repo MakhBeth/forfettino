@@ -3,29 +3,44 @@ import type { Config } from '../types';
 import { DEFAULT_CONFIG } from '../lib/constants/fiscali';
 import type { IndexedDBManager } from '../lib/db/IndexedDBManager';
 
-export function useConfig(dbManager: IndexedDBManager, dbReady: boolean) {
-  const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
+export function useConfig(dbManager: IndexedDBManager, dbReady: boolean, currentUserId: string | null) {
+  const [config, setConfig] = useState<Config>({
+    ...DEFAULT_CONFIG,
+    id: currentUserId ? `config_${currentUserId}` : 'main',
+    userId: currentUserId || ''
+  });
 
-  // Load config from DB on mount
+  // Load config from DB when user changes
   useEffect(() => {
-    if (!dbReady) return;
+    if (!dbReady || !currentUserId) return;
 
     const loadConfig = async () => {
       try {
-        const savedConfig = await dbManager.get('config', 'main');
+        const configId = `config_${currentUserId}`;
+        const savedConfig = await dbManager.get('config', configId);
         if (savedConfig) {
           setConfig(savedConfig);
+        } else {
+          // Create default config for this user
+          const newConfig: Config = {
+            ...DEFAULT_CONFIG,
+            id: configId,
+            userId: currentUserId
+          };
+          setConfig(newConfig);
         }
       } catch (error) {
         console.error('Errore caricamento config:', error);
       }
     };
     loadConfig();
-  }, [dbManager, dbReady]);
+  }, [dbManager, dbReady, currentUserId]);
 
   // Save config to DB whenever it changes
   useEffect(() => {
-    if (!dbReady) return;
+    if (!dbReady || !currentUserId) return;
+    // Don't save if config doesn't match current user
+    if (config.userId !== currentUserId) return;
 
     const saveConfig = async () => {
       try {
@@ -35,7 +50,7 @@ export function useConfig(dbManager: IndexedDBManager, dbReady: boolean) {
       }
     };
     saveConfig();
-  }, [config, dbManager, dbReady]);
+  }, [config, dbManager, dbReady, currentUserId]);
 
   const updateConfig = useCallback((updates: Partial<Config>) => {
     setConfig(prev => ({ ...prev, ...updates }));

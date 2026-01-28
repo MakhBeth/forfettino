@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Download, Upload, Database, Plus, X, Edit, Trash2, Users, Palette, Building, FolderSync, RefreshCw, FolderOpen, AlertCircle } from 'lucide-react';
+import { Download, Upload, Database, Plus, X, Edit, Trash2, Users, Palette, Building, FolderSync, RefreshCw, FolderOpen, AlertCircle, UserCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import type { Cliente, EmittenteConfig } from '../../types';
+import type { Cliente, EmittenteConfig, User } from '../../types';
 import { COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
 import { ThemeSwitch } from '../shared/ThemeSwitch';
 import { DesignStyleSwitch } from '../shared/DesignStyleSwitch';
@@ -38,10 +38,17 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
     syncToFolder,
     setSyncFolderHandle,
     setSyncFolderName,
-    setLastSyncTime
+    setLastSyncTime,
+    users,
+    currentUser,
+    addUser,
+    updateUser,
+    deleteUser
   } = useApp();
   const [newAteco, setNewAteco] = useState<string>('');
   const [showUnsupportedMessage, setShowUnsupportedMessage] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [newUserName, setNewUserName] = useState('');
 
   const handleSelectSyncFolder = async () => {
     if (!isFileSystemAccessSupported()) {
@@ -87,6 +94,42 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
       }, 0) / config.codiciAteco.length
     : 78;
 
+  const handleAddUser = async () => {
+    if (!newUserName.trim()) return;
+    try {
+      await addUser(newUserName.trim());
+      setNewUserName('');
+      showToast('Utente creato!');
+    } catch (error) {
+      showToast('Errore nella creazione utente', 'error');
+    }
+  };
+
+  const handleUpdateUser = async () => {
+    if (!editingUser || !editingUser.nome.trim()) return;
+    try {
+      await updateUser(editingUser);
+      setEditingUser(null);
+      showToast('Utente aggiornato!');
+    } catch (error) {
+      showToast('Errore nell\'aggiornamento utente', 'error');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (users.length <= 1) {
+      showToast('Impossibile eliminare l\'ultimo utente', 'error');
+      return;
+    }
+    if (!confirm('Sei sicuro di voler eliminare questo utente e tutti i suoi dati?')) return;
+    try {
+      await deleteUser(userId);
+      showToast('Utente eliminato!');
+    } catch (error) {
+      showToast('Errore nell\'eliminazione utente', 'error');
+    }
+  };
+
   return (
     <>
       <div className="page-header">
@@ -97,12 +140,155 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
       <div className="card">
         <h2 className="card-title"><Database size={16} aria-hidden="true" style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />Backup & Ripristino</h2>
         <div className="backup-section">
-          <button className="btn btn-success" onClick={handleExport}><Download size={18} aria-hidden="true" /> Esporta backup</button>
+          <button className="btn btn-ghost" onClick={handleExport}><Download size={18} aria-hidden="true" /> Esporta backup</button>
           <button className="btn btn-primary" onClick={() => setShowModal('import')}><Upload size={18} aria-hidden="true" /> Importa backup</button>
         </div>
         <div className="backup-info">
           <h2>ℹ️ Info backup</h2>
           <p>I dati sono in IndexedDB (locale). Esporta regolarmente per sicurezza. Il JSON contiene: config, clienti, fatture e ore.</p>
+        </div>
+      </div>
+
+      {/* Gestione Utenti */}
+      <div className="card">
+        <h2 className="card-title"><UserCircle size={16} aria-hidden="true" style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />Gestione Utenti</h2>
+
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: 12 }}>
+            Utente corrente: <strong style={{ color: 'var(--accent-green)' }}>{currentUser?.nome}</strong>
+          </p>
+        </div>
+
+        {/* Lista utenti */}
+        <div className="table-wrapper" style={{ marginBottom: 16 }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th scope="col">Nome</th>
+                <th scope="col">Colore</th>
+                <th scope="col">Creato il</th>
+                <th scope="col"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(user => (
+                <tr key={user.id}>
+                  <td style={{ fontWeight: user.id === currentUser?.id ? 600 : 400 }}>
+                    {editingUser?.id === user.id ? (
+                      <input
+                        type="text"
+                        className="input-field"
+                        value={editingUser.nome}
+                        onChange={(e) => setEditingUser({ ...editingUser, nome: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleUpdateUser();
+                          if (e.key === 'Escape') setEditingUser(null);
+                        }}
+                        autoFocus
+                        style={{ padding: '6px 10px', fontSize: '0.9rem' }}
+                      />
+                    ) : (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {user.nome}
+                        {user.id === currentUser?.id && (
+                          <span className="badge badge-green">Attivo</span>
+                        )}
+                      </span>
+                    )}
+                  </td>
+                  <td>
+                    {editingUser?.id === user.id ? (
+                      <input
+                        type="color"
+                        value={editingUser.color || '#047857'}
+                        onChange={(e) => setEditingUser({ ...editingUser, color: e.target.value })}
+                        style={{ width: 40, height: 32, padding: 0, border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          width: 24,
+                          height: 24,
+                          borderRadius: 6,
+                          backgroundColor: user.color || '#047857',
+                          border: '2px solid var(--border)'
+                        }}
+                        title={user.color || '#047857'}
+                      />
+                    )}
+                  </td>
+                  <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    {new Date(user.createdAt).toLocaleDateString('it-IT')}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {editingUser?.id === user.id ? (
+                        <>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={handleUpdateUser}
+                          >
+                            Salva
+                          </button>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setEditingUser(null)}
+                          >
+                            Annulla
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setEditingUser({ ...user })}
+                            aria-label={`Modifica ${user.nome}`}
+                          >
+                            <Edit size={16} aria-hidden="true" />
+                          </button>
+                          <button
+                            className="btn btn-danger"
+                            onClick={() => handleDeleteUser(user.id)}
+                            aria-label={`Elimina ${user.nome}`}
+                            disabled={users.length <= 1}
+                            title={users.length <= 1 ? 'Impossibile eliminare l\'ultimo utente' : ''}
+                          >
+                            <Trash2 size={16} aria-hidden="true" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Aggiungi nuovo utente */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="text"
+            className="input-field"
+            placeholder="Nome nuovo utente..."
+            value={newUserName}
+            onChange={(e) => setNewUserName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAddUser()}
+            style={{ flex: 1 }}
+          />
+          <button
+            className="btn btn-primary"
+            onClick={handleAddUser}
+            disabled={!newUserName.trim()}
+          >
+            <Plus size={18} aria-hidden="true" /> Aggiungi
+          </button>
+        </div>
+
+        <div className="backup-info" style={{ marginTop: 16 }}>
+          <h2>Info multi-utenza</h2>
+          <p>Ogni utente ha dati separati: clienti, fatture, ore lavorate e configurazione P.IVA. Cambia utente dal selettore in alto.</p>
         </div>
       </div>
 

@@ -2,33 +2,38 @@ import { useState, useEffect, useCallback } from 'react';
 import type { WorkLog } from '../types';
 import type { IndexedDBManager } from '../lib/db/IndexedDBManager';
 
-export function useWorkLogs(dbManager: IndexedDBManager, dbReady: boolean) {
+export function useWorkLogs(dbManager: IndexedDBManager, dbReady: boolean, currentUserId: string | null) {
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
 
-  // Load work logs from DB on mount
+  // Load work logs from DB when user changes
   useEffect(() => {
-    if (!dbReady) return;
+    if (!dbReady || !currentUserId) return;
 
     const loadWorkLogs = async () => {
       try {
-        const savedWorkLogs = await dbManager.getAll('workLogs');
+        const savedWorkLogs = await dbManager.getAllForUser('workLogs', currentUserId);
         setWorkLogs(savedWorkLogs || []);
       } catch (error) {
         console.error('Errore caricamento work logs:', error);
       }
     };
     loadWorkLogs();
-  }, [dbManager, dbReady]);
+  }, [dbManager, dbReady, currentUserId]);
 
-  const addWorkLog = useCallback(async (workLog: WorkLog) => {
+  const addWorkLog = useCallback(async (workLog: Omit<WorkLog, 'userId'> & { userId?: string }) => {
+    if (!currentUserId) return;
     try {
-      await dbManager.put('workLogs', workLog);
-      setWorkLogs(prev => [...prev, workLog]);
+      const workLogWithUser: WorkLog = {
+        ...workLog,
+        userId: currentUserId
+      };
+      await dbManager.put('workLogs', workLogWithUser);
+      setWorkLogs(prev => [...prev, workLogWithUser]);
     } catch (error) {
       console.error('Errore aggiunta work log:', error);
       throw error;
     }
-  }, [dbManager]);
+  }, [dbManager, currentUserId]);
 
   const updateWorkLog = useCallback(async (workLog: WorkLog) => {
     try {

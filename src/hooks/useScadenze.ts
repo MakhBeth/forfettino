@@ -2,32 +2,37 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Scadenza } from '../types';
 import type { IndexedDBManager } from '../lib/db/IndexedDBManager';
 
-export function useScadenze(dbManager: IndexedDBManager, dbReady: boolean) {
+export function useScadenze(dbManager: IndexedDBManager, dbReady: boolean, currentUserId: string | null) {
   const [scadenze, setScadenze] = useState<Scadenza[]>([]);
 
   useEffect(() => {
-    if (!dbReady) return;
+    if (!dbReady || !currentUserId) return;
 
     const loadScadenze = async () => {
       try {
-        const savedScadenze = await dbManager.getAll('scadenze');
+        const savedScadenze = await dbManager.getAllForUser('scadenze', currentUserId);
         setScadenze(savedScadenze || []);
       } catch (error) {
         console.error('Errore caricamento scadenze:', error);
       }
     };
     loadScadenze();
-  }, [dbManager, dbReady]);
+  }, [dbManager, dbReady, currentUserId]);
 
-  const addScadenza = useCallback(async (scadenza: Scadenza) => {
+  const addScadenza = useCallback(async (scadenza: Omit<Scadenza, 'userId'> & { userId?: string }) => {
+    if (!currentUserId) return;
     try {
-      await dbManager.put('scadenze', scadenza);
-      setScadenze(prev => [...prev, scadenza]);
+      const scadenzaWithUser: Scadenza = {
+        ...scadenza,
+        userId: currentUserId
+      };
+      await dbManager.put('scadenze', scadenzaWithUser);
+      setScadenze(prev => [...prev, scadenzaWithUser]);
     } catch (error) {
       console.error('Errore aggiunta scadenza:', error);
       throw error;
     }
-  }, [dbManager]);
+  }, [dbManager, currentUserId]);
 
   const updateScadenza = useCallback(async (scadenza: Scadenza) => {
     try {
@@ -50,8 +55,9 @@ export function useScadenze(dbManager: IndexedDBManager, dbReady: boolean) {
   }, [dbManager]);
 
   const removeScadenzeByYear = useCallback(async (annoVersamento: number) => {
+    if (!currentUserId) return;
     try {
-      const allScadenze: Scadenza[] = await dbManager.getAll('scadenze');
+      const allScadenze: Scadenza[] = await dbManager.getAllForUser('scadenze', currentUserId);
       const toRemove = allScadenze.filter(s => s.annoVersamento === annoVersamento);
       for (const s of toRemove) {
         await dbManager.delete('scadenze', s.id);
@@ -61,23 +67,28 @@ export function useScadenze(dbManager: IndexedDBManager, dbReady: boolean) {
       console.error('Errore eliminazione scadenze per anno:', error);
       throw error;
     }
-  }, [dbManager]);
+  }, [dbManager, currentUserId]);
 
-  const bulkSaveScadenze = useCallback(async (newScadenze: Scadenza[]) => {
+  const bulkSaveScadenze = useCallback(async (newScadenze: Array<Omit<Scadenza, 'userId'> & { userId?: string }>) => {
+    if (!currentUserId) return;
     try {
-      for (const scadenza of newScadenze) {
+      const scadenzeWithUser: Scadenza[] = newScadenze.map(s => ({
+        ...s,
+        userId: currentUserId
+      }));
+      for (const scadenza of scadenzeWithUser) {
         await dbManager.put('scadenze', scadenza);
       }
       setScadenze(prev => {
-        const existingIds = new Set(newScadenze.map(s => s.id));
+        const existingIds = new Set(scadenzeWithUser.map(s => s.id));
         const filtered = prev.filter(s => !existingIds.has(s.id));
-        return [...filtered, ...newScadenze];
+        return [...filtered, ...scadenzeWithUser];
       });
     } catch (error) {
       console.error('Errore salvataggio scadenze:', error);
       throw error;
     }
-  }, [dbManager]);
+  }, [dbManager, currentUserId]);
 
   const getScadenzeByYear = useCallback((annoVersamento: number) => {
     return scadenze.filter(s => s.annoVersamento === annoVersamento);
@@ -87,11 +98,11 @@ export function useScadenze(dbManager: IndexedDBManager, dbReady: boolean) {
     const relevantScadenze = scadenze.filter(
       s => s.annoRiferimento === annoRiferimento && s.pagato
     );
-    
+
     const irpefPaid = relevantScadenze
       .filter(s => s.tipo === 'acconto_irpef')
       .reduce((sum, s) => sum + s.importo, 0);
-    
+
     const inpsPaid = relevantScadenze
       .filter(s => s.tipo === 'acconto_inps')
       .reduce((sum, s) => sum + s.importo, 0);

@@ -2,8 +2,8 @@ import type { Config } from '../../types';
 
 // Database constants
 export const DB_NAME = 'ForfettarioDB';
-export const DB_VERSION = 2;
-export const STORES = ['config', 'clienti', 'fatture', 'workLogs', 'scadenze'] as const;
+export const DB_VERSION = 3;
+export const STORES = ['config', 'clienti', 'fatture', 'workLogs', 'scadenze', 'users'] as const;
 
 // Fiscal constants
 export const LIMITE_FATTURATO = 85000;
@@ -28,6 +28,7 @@ export const GIORNO_SCADENZA_SALDO = 30; // June 30 and November 30
 // Default configuration
 export const DEFAULT_CONFIG: Config = {
   id: 'main',
+  userId: '',
   coefficiente: 0,
   aliquota: 0,
   ateco: [],

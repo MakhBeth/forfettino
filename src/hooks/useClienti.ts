@@ -2,33 +2,38 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Cliente } from '../types';
 import type { IndexedDBManager } from '../lib/db/IndexedDBManager';
 
-export function useClienti(dbManager: IndexedDBManager, dbReady: boolean) {
+export function useClienti(dbManager: IndexedDBManager, dbReady: boolean, currentUserId: string | null) {
   const [clienti, setClienti] = useState<Cliente[]>([]);
 
-  // Load clienti from DB on mount
+  // Load clienti from DB when user changes
   useEffect(() => {
-    if (!dbReady) return;
+    if (!dbReady || !currentUserId) return;
 
     const loadClienti = async () => {
       try {
-        const savedClienti = await dbManager.getAll('clienti');
+        const savedClienti = await dbManager.getAllForUser('clienti', currentUserId);
         setClienti(savedClienti || []);
       } catch (error) {
         console.error('Errore caricamento clienti:', error);
       }
     };
     loadClienti();
-  }, [dbManager, dbReady]);
+  }, [dbManager, dbReady, currentUserId]);
 
-  const addCliente = useCallback(async (cliente: Cliente) => {
+  const addCliente = useCallback(async (cliente: Omit<Cliente, 'userId'> & { userId?: string }) => {
+    if (!currentUserId) return;
     try {
-      await dbManager.put('clienti', cliente);
-      setClienti(prev => [...prev, cliente]);
+      const clienteWithUser: Cliente = {
+        ...cliente,
+        userId: currentUserId
+      };
+      await dbManager.put('clienti', clienteWithUser);
+      setClienti(prev => [...prev, clienteWithUser]);
     } catch (error) {
       console.error('Errore aggiunta cliente:', error);
       throw error;
     }
-  }, [dbManager]);
+  }, [dbManager, currentUserId]);
 
   const updateCliente = useCallback(async (cliente: Cliente) => {
     try {

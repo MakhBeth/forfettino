@@ -2,33 +2,38 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Fattura } from '../types';
 import type { IndexedDBManager } from '../lib/db/IndexedDBManager';
 
-export function useFatture(dbManager: IndexedDBManager, dbReady: boolean) {
+export function useFatture(dbManager: IndexedDBManager, dbReady: boolean, currentUserId: string | null) {
   const [fatture, setFatture] = useState<Fattura[]>([]);
 
-  // Load fatture from DB on mount
+  // Load fatture from DB when user changes
   useEffect(() => {
-    if (!dbReady) return;
+    if (!dbReady || !currentUserId) return;
 
     const loadFatture = async () => {
       try {
-        const savedFatture = await dbManager.getAll('fatture');
+        const savedFatture = await dbManager.getAllForUser('fatture', currentUserId);
         setFatture(savedFatture || []);
       } catch (error) {
         console.error('Errore caricamento fatture:', error);
       }
     };
     loadFatture();
-  }, [dbManager, dbReady]);
+  }, [dbManager, dbReady, currentUserId]);
 
-  const addFattura = useCallback(async (fattura: Fattura) => {
+  const addFattura = useCallback(async (fattura: Omit<Fattura, 'userId'> & { userId?: string }) => {
+    if (!currentUserId) return;
     try {
-      await dbManager.put('fatture', fattura);
-      setFatture(prev => [...prev, fattura]);
+      const fatturaWithUser: Fattura = {
+        ...fattura,
+        userId: currentUserId
+      };
+      await dbManager.put('fatture', fatturaWithUser);
+      setFatture(prev => [...prev, fatturaWithUser]);
     } catch (error) {
       console.error('Errore aggiunta fattura:', error);
       throw error;
     }
-  }, [dbManager]);
+  }, [dbManager, currentUserId]);
 
   const updateFattura = useCallback(async (fattura: Fattura) => {
     try {

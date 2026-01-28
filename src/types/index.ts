@@ -3,10 +3,19 @@
 // Special client ID for vacation/holiday entries (not shown in client list)
 export const VACATION_CLIENT_ID = '__vacation__';
 
-export type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs' | 'scadenze';
+export type StoreName = 'config' | 'clienti' | 'fatture' | 'workLogs' | 'scadenze' | 'users';
+
+// User interface for multi-user support
+export interface User {
+  id: string;
+  nome: string;
+  createdAt: string;
+  color?: string; // Hex color for user theme
+}
 
 export interface Cliente {
   id: string;
+  userId: string;
   nome: string;
   piva?: string;
   email?: string;
@@ -18,6 +27,7 @@ export interface Cliente {
 
 export interface Fattura {
   id: string;
+  userId: string;
   numero?: string;
   clienteId: string;
   clienteNome: string;
@@ -29,6 +39,7 @@ export interface Fattura {
 
 export interface WorkLog {
   id: string;
+  userId: string;
   clienteId: string;
   data: string;
   ore?: string; // Legacy field, kept for backward compatibility
@@ -39,6 +50,7 @@ export interface WorkLog {
 
 export interface Config {
   id: string;
+  userId: string;
   coefficiente: number;
   aliquota: number;
   ateco: string[];
@@ -188,6 +200,7 @@ export type ScadenzaTipo = 'saldo_irpef' | 'acconto_irpef' | 'saldo_inps' | 'acc
 
 export interface Scadenza {
   id: string;
+  userId: string;
   visibleId: string;
   annoRiferimento: number;
   annoVersamento: number;

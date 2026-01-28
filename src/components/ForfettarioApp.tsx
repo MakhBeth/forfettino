@@ -16,6 +16,7 @@ import { AppProvider, useApp } from "../context/AppContext";
 import { Toast } from "./shared/Toast";
 import { LoadingSpinner } from "./shared/LoadingSpinner";
 import { useDesignStyle } from "./shared/DesignStyleSwitch";
+import { UserSelector } from "./shared/UserSelector";
 import { parseFatturaXML, extractXmlFromZip } from "../lib/utils/xmlParsing";
 import { processBatchXmlFiles } from "../lib/utils/batchImport";
 import {
@@ -435,8 +436,17 @@ function ForfettarioAppInner() {
       </a>
       <div className="app-container">
         <nav className="sidebar">
-          <div className="logo">Forfettino</div>
-          <div className="logo-sub">Gestione P.IVA Semplificata</div>
+          <div className="sidebar-header">
+            <div>
+              <div className="logo">Forfettino</div>
+              <div className="logo-sub">Gestione P.IVA Semplificata</div>
+            </div>
+            <div className="mobile-header-user">
+              <UserSelector compact />
+            </div>
+          </div>
+
+          <UserSelector />
 
           <nav className="nav-items" aria-label="Navigazione principale">
             <button
@@ -688,14 +698,12 @@ function ForfettarioAppInner() {
               onAdd={async () => {
                 if (!newCliente.nome) return;
 
-                const cliente: Cliente = {
+                await addCliente({
                   id: Date.now().toString(),
                   nome: newCliente.nome,
                   piva: newCliente.piva || "",
                   email: newCliente.email || "",
-                };
-
-                await addCliente(cliente);
+                });
                 setNewCliente({ nome: "", piva: "", email: "" });
                 setShowModal(null);
                 showToast("Cliente aggiunto!");
