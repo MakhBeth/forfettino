@@ -13,12 +13,12 @@ interface AddWorkLogModalProps {
 }
 
 export function AddWorkLogModal({ isOpen, onClose, selectedDate, newWorkLog, setNewWorkLog, clienti, onAdd }: AddWorkLogModalProps) {
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   if (!isOpen) return null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="add-worklog-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="add-worklog-title">
         <div className="modal-header">
           <h3 id="add-worklog-title" className="modal-title">Registra Lavoro</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

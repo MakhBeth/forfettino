@@ -9,12 +9,12 @@ interface ImportSummaryModalProps {
 }
 
 export function ImportSummaryModal({ isOpen, onClose, summary }: ImportSummaryModalProps) {
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   if (!isOpen || !summary) return null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="import-summary-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="import-summary-title">
         <div className="modal-header">
           <h3 id="import-summary-title" className="modal-title">Riepilogo Importazione</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

@@ -10,7 +10,7 @@ interface UploadFatturaModalProps {
 }
 
 export function UploadFatturaModal({ isOpen, onClose, onUpload }: UploadFatturaModalProps) {
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   const handleFiles = useCallback((files: FileList) => {
     const file = files[0];
@@ -27,7 +27,7 @@ export function UploadFatturaModal({ isOpen, onClose, onUpload }: UploadFatturaM
   if (!isOpen) return null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="upload-fattura-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="upload-fattura-title">
         <div className="modal-header">
           <h3 id="upload-fattura-title" className="modal-title">Carica Fattura XML</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

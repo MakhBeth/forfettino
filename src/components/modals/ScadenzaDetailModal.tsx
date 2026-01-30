@@ -12,7 +12,7 @@ interface ScadenzaDetailModalProps {
 }
 
 export function ScadenzaDetailModal({ isOpen, onClose, selectedDate }: ScadenzaDetailModalProps) {
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
   const { scadenze, updateScadenza, showToast } = useApp();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -59,7 +59,7 @@ export function ScadenzaDetailModal({ isOpen, onClose, selectedDate }: ScadenzaD
   };
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="scadenza-detail-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="scadenza-detail-title">
       <div className="modal-header">
         <h3 id="scadenza-detail-title" className="modal-title">Scadenze Fiscali</h3>
         <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

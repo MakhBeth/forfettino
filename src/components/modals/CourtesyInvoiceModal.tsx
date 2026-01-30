@@ -13,7 +13,7 @@ interface CourtesyInvoiceModalProps {
 
 export function CourtesyInvoiceModal({ isOpen, onClose }: CourtesyInvoiceModalProps) {
   const { config, showToast } = useApp();
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -180,6 +180,7 @@ export function CourtesyInvoiceModal({ isOpen, onClose }: CourtesyInvoiceModalPr
       className="modal"
       onClose={onClose}
       onClick={handleClick}
+      onMouseDown={handleMouseDown}
       aria-labelledby="courtesy-invoice-title"
       style={{ maxWidth: 950, maxHeight: '85vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
     >

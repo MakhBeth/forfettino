@@ -11,12 +11,12 @@ interface AddClienteModalProps {
 }
 
 export function AddClienteModal({ isOpen, onClose, newCliente, setNewCliente, onAdd }: AddClienteModalProps) {
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   if (!isOpen) return null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="add-cliente-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="add-cliente-title">
         <div className="modal-header">
           <h3 id="add-cliente-title" className="modal-title">Nuovo Cliente</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

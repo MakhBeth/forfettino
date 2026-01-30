@@ -10,7 +10,7 @@ interface ImportBackupModalProps {
 }
 
 export function ImportBackupModal({ isOpen, onClose, onImport }: ImportBackupModalProps) {
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   const handleFiles = useCallback((files: FileList) => {
     const file = files[0];
@@ -27,7 +27,7 @@ export function ImportBackupModal({ isOpen, onClose, onImport }: ImportBackupMod
   if (!isOpen) return null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="import-backup-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="import-backup-title">
         <div className="modal-header">
           <h3 id="import-backup-title" className="modal-title">Importa Backup</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

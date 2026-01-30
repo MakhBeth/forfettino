@@ -12,7 +12,7 @@ interface EditWorkLogModalProps {
 }
 
 export function EditWorkLogModal({ isOpen, onClose, workLog, setWorkLog, clienti, onUpdate }: EditWorkLogModalProps) {
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   if (!isOpen || !workLog) return null;
 
@@ -21,7 +21,7 @@ export function EditWorkLogModal({ isOpen, onClose, workLog, setWorkLog, clienti
   const isHourly = billingUnit === 'ore';
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="edit-worklog-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="edit-worklog-title">
         <div className="modal-header">
           <h3 id="edit-worklog-title" className="modal-title">Modifica Attività</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

@@ -11,7 +11,7 @@ interface UploadZipModalProps {
 
 export function UploadZipModal({ isOpen, onClose, onUpload }: UploadZipModalProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   const processFile = useCallback(async (file: File) => {
     setIsUploading(true);
@@ -38,7 +38,7 @@ export function UploadZipModal({ isOpen, onClose, onUpload }: UploadZipModalProp
   if (!isOpen) return null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="upload-zip-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="upload-zip-title">
         <div className="modal-header">
           <h3 id="upload-zip-title" className="modal-title">Carica File ZIP</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

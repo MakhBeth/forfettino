@@ -25,7 +25,7 @@ export function CalendarDayModal({
   onAddWorkLog,
   initialTab = 'lavoro',
 }: CalendarDayModalProps) {
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
   const { scadenze, updateScadenza, showToast } = useApp();
   const [activeTab, setActiveTab] = useState<'lavoro' | 'scadenze'>(initialTab);
 
@@ -82,7 +82,7 @@ export function CalendarDayModal({
   const allPaid = dayScadenze.every(s => s.pagato);
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="calendar-day-modal-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="calendar-day-modal-title">
       <div className="modal-header">
         <h3 id="calendar-day-modal-title" className="modal-title" style={{ textTransform: 'capitalize' }}>
           {formatDateLong(selectedDate)}

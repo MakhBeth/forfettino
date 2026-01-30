@@ -11,12 +11,12 @@ interface EditClienteModalProps {
 }
 
 export function EditClienteModal({ isOpen, onClose, cliente, setCliente, onUpdate }: EditClienteModalProps) {
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   if (!isOpen || !cliente) return null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="edit-cliente-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="edit-cliente-title">
         <div className="modal-header">
           <h3 id="edit-cliente-title" className="modal-title">Modifica Cliente</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

@@ -4,6 +4,7 @@ export function useDialog(isOpen: boolean, onClose: () => void) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const previousIsOpen = useRef(false);
+  const mouseDownOutside = useRef(false);
 
   // Capture trigger element BEFORE dialog opens
   useLayoutEffect(() => {
@@ -47,7 +48,23 @@ export function useDialog(isOpen: boolean, onClose: () => void) {
     }
   }, [isOpen]);
 
-  // Handle backdrop click
+  // Track where mousedown started
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDialogElement>) => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const rect = dialog.getBoundingClientRect();
+    const inDialog = (
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom
+    );
+
+    mouseDownOutside.current = !inDialog;
+  }, []);
+
+  // Handle backdrop click - only close if both mousedown AND mouseup were outside
   const handleClick = useCallback((e: React.MouseEvent<HTMLDialogElement>) => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -60,10 +77,11 @@ export function useDialog(isOpen: boolean, onClose: () => void) {
       e.clientY <= rect.bottom
     );
 
-    if (!clickedInDialog) {
+    if (!clickedInDialog && mouseDownOutside.current) {
       onClose();
     }
+    mouseDownOutside.current = false;
   }, [onClose]);
 
-  return { dialogRef, handleClick };
+  return { dialogRef, handleClick, handleMouseDown };
 }

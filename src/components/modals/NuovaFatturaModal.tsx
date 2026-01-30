@@ -279,7 +279,7 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
     onClose();
   };
 
-  const { dialogRef, handleClick } = useDialog(isOpen, handleClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, handleClose);
 
   if (!isOpen) return null;
 
@@ -289,6 +289,7 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
       className="modal"
       onClose={handleClose}
       onClick={handleClick}
+      onMouseDown={handleMouseDown}
       aria-labelledby="nuova-fattura-title"
       style={{ maxWidth: 700 }}
     >

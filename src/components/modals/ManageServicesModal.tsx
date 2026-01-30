@@ -11,7 +11,7 @@ interface ManageServicesModalProps {
 
 export function ManageServicesModal({ isOpen, onClose }: ManageServicesModalProps) {
   const { config, setConfig, showToast } = useApp();
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   const [services, setServices] = useState<ServiceTemplate[]>(
     config.courtesyInvoice?.defaultServices || []
@@ -67,7 +67,7 @@ export function ManageServicesModal({ isOpen, onClose }: ManageServicesModalProp
   if (!isOpen) return null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="manage-services-title" style={{ maxWidth: 700 }}>
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="manage-services-title" style={{ maxWidth: 700 }}>
         <div className="modal-header">
           <h3 id="manage-services-title" className="modal-title">Gestisci Servizi Predefiniti</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

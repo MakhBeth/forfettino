@@ -11,12 +11,12 @@ interface EditDataIncassoModalProps {
 }
 
 export function EditDataIncassoModal({ isOpen, onClose, fattura, setFattura, onUpdate }: EditDataIncassoModalProps) {
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   if (!isOpen || !fattura) return null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="edit-incasso-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="edit-incasso-title">
         <div className="modal-header">
           <h3 id="edit-incasso-title" className="modal-title">Modifica Data Incasso</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>

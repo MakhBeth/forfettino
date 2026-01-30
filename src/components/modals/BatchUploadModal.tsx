@@ -11,7 +11,7 @@ interface BatchUploadModalProps {
 
 export function BatchUploadModal({ isOpen, onClose, onUpload }: BatchUploadModalProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const { dialogRef, handleClick } = useDialog(isOpen, onClose);
+  const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
 
   const processFiles = useCallback(async (files: FileList) => {
     setIsUploading(true);
@@ -34,7 +34,7 @@ export function BatchUploadModal({ isOpen, onClose, onUpload }: BatchUploadModal
   if (!isOpen) return null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} aria-labelledby="batch-upload-title">
+    <dialog ref={dialogRef} className="modal" onClose={onClose} onClick={handleClick} onMouseDown={handleMouseDown} aria-labelledby="batch-upload-title">
         <div className="modal-header">
           <h3 id="batch-upload-title" className="modal-title">Importa File XML Multipli</h3>
           <button className="close-btn" onClick={onClose} aria-label="Chiudi"><X size={20} aria-hidden="true" /></button>
