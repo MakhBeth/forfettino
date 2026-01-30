@@ -103,6 +103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Users hook - must be initialized before other data hooks
   const {
     users,
+    setUsers,
     currentUserId,
     currentUser,
     isInitialized: isUsersInitialized,
@@ -125,6 +126,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setFattureRef = useRef(setFatture);
   const setWorkLogsRef = useRef(setWorkLogs);
   const setScadenzeRef = useRef(setScadenze);
+  const setUsersRef = useRef(setUsers);
 
   useEffect(() => {
     setConfigRef.current = setConfig;
@@ -132,7 +134,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFattureRef.current = setFatture;
     setWorkLogsRef.current = setWorkLogs;
     setScadenzeRef.current = setScadenze;
-  }, [setConfig, setClienti, setFatture, setWorkLogs, setScadenze]);
+    setUsersRef.current = setUsers;
+  }, [setConfig, setClienti, setFatture, setWorkLogs, setScadenze, setUsers]);
 
   // Folder sync with load on startup
   // Returns true if data was migrated and needs to be synced back
@@ -225,7 +228,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       throw err;
     }
 
-    // Then update state - filter by target user
+    // Then update state - filter by target user for data, but keep all users
+    if (data.users) {
+      setUsersRef.current(data.users);
+    }
     if (data.config && targetUserId) {
       const userConfig = data.config.find((c: Config) => c.userId === targetUserId);
       if (userConfig) setConfigRef.current(userConfig);
@@ -266,19 +272,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Track previous values to detect changes
   const prevDataRef = useRef<string>('');
 
-  // Auto-sync when data changes
+  // Auto-sync when data changes (including users)
   useEffect(() => {
     if (!isInitialLoadDone || !syncFolderHandle) return;
 
     // Create a simple hash of current data to detect changes
-    const currentData = JSON.stringify({ config, clienti, fatture, workLogs, scadenze });
+    const currentData = JSON.stringify({ users, config, clienti, fatture, workLogs, scadenze });
 
     if (prevDataRef.current && prevDataRef.current !== currentData) {
       syncToFolder();
     }
 
     prevDataRef.current = currentData;
-  }, [config, clienti, fatture, workLogs, scadenze, isInitialLoadDone, syncFolderHandle, syncToFolder]);
+  }, [users, config, clienti, fatture, workLogs, scadenze, isInitialLoadDone, syncFolderHandle, syncToFolder]);
 
   // Export/Import handlers
   const exportData = useCallback(async () => {
