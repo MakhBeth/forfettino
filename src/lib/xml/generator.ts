@@ -24,7 +24,8 @@ export interface FatturaXMLData {
 }
 
 // Escape caratteri speciali XML
-function escapeXml(text: string): string {
+function escapeXml(text: string | undefined | null): string {
+  if (text == null) return '';
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
