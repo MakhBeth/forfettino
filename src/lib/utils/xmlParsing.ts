@@ -36,13 +36,25 @@ export const parseFatturaXML = (xmlContent: string): any | null => {
     const dataEmissione = doc.querySelector('Data')?.textContent || new Date().toISOString().split('T')[0];
     const dataRiferimentoPagamento = doc.querySelector('DettaglioPagamento DataRiferimentoTerminiPagamento')?.textContent;
 
+    // Extract cliente address from CessionarioCommittente Sede
+    const clienteSede = doc.querySelector('CessionarioCommittente Sede');
+
     return {
       importo: parseFloat(doc.querySelector('ImportoTotaleDocumento, ImponibileImporto')?.textContent || '0'),
       data: dataEmissione,
       dataIncasso: dataRiferimentoPagamento || dataEmissione,
       numero: doc.querySelector('Numero')?.textContent || '',
       clienteNome: doc.querySelector('CessionarioCommittente Denominazione, CessionarioCommittente DatiAnagrafici Anagrafica Denominazione')?.textContent || 'Cliente',
-      clientePiva: doc.querySelector('CessionarioCommittente IdFiscaleIVA IdCodice, CessionarioCommittente CodiceFiscale')?.textContent || ''
+      clientePiva: doc.querySelector('CessionarioCommittente IdFiscaleIVA IdCodice, CessionarioCommittente CodiceFiscale')?.textContent || '',
+      // Cliente address fields
+      clienteIndirizzo: clienteSede?.querySelector('Indirizzo')?.textContent || '',
+      clienteNumeroCivico: clienteSede?.querySelector('NumeroCivico')?.textContent || '',
+      clienteCap: clienteSede?.querySelector('CAP')?.textContent || '',
+      clienteComune: clienteSede?.querySelector('Comune')?.textContent || '',
+      clienteProvincia: clienteSede?.querySelector('Provincia')?.textContent || '',
+      clienteNazione: clienteSede?.querySelector('Nazione')?.textContent || '',
+      // Cliente email from Contatti
+      clienteEmail: doc.querySelector('CessionarioCommittente Contatti Email')?.textContent || ''
     };
   } catch (e) {
     return null;

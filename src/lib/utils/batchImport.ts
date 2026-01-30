@@ -103,8 +103,14 @@ export const processBatchXmlFiles = async (
         const nuovoCliente: NewCliente = {
           id: generateUniqueId(i),
           nome: parsed.clienteNome,
-          piva: parsed.clientePiva,
-          email: ''
+          piva: parsed.clientePiva || '',
+          email: parsed.clienteEmail || '',
+          indirizzo: parsed.clienteIndirizzo || '',
+          numeroCivico: parsed.clienteNumeroCivico || '',
+          cap: parsed.clienteCap || '',
+          comune: parsed.clienteComune || '',
+          provincia: parsed.clienteProvincia || '',
+          nazione: parsed.clienteNazione || ''
         };
         newClienti.push(nuovoCliente);
         clienteId = nuovoCliente.id;

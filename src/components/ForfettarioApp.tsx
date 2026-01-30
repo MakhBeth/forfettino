@@ -286,7 +286,13 @@ function ForfettarioAppInner() {
           id: Date.now().toString(),
           nome: parsed.clienteNome,
           piva: parsed.clientePiva || "",
-          email: "",
+          email: parsed.clienteEmail || "",
+          indirizzo: parsed.clienteIndirizzo || "",
+          numeroCivico: parsed.clienteNumeroCivico || "",
+          cap: parsed.clienteCap || "",
+          comune: parsed.clienteComune || "",
+          provincia: parsed.clienteProvincia || "",
+          nazione: parsed.clienteNazione || "",
         };
         await addCliente(nuovoCliente);
         clienteId = nuovoCliente.id;
