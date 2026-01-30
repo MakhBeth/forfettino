@@ -252,12 +252,12 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
       const nuovaFattura = {
         id: Date.now().toString(),
         numero,
-        importo: totaleDocumento,
+        importo: totaleImponibile,
         data,
         dataIncasso: data,
         clienteId: finalClienteId,
         clienteNome: finalClienteNome,
-        duplicateKey: `${numero}-${data}-${totaleDocumento}`,
+        duplicateKey: `${numero}-${data}-${totaleImponibile}`,
       };
 
       await addFattura(nuovaFattura);
