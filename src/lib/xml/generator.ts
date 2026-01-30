@@ -143,7 +143,7 @@ export function generateFatturaXML(data: FatturaXMLData): string {
         <CAP>${escapeXml(emittente.cap)}</CAP>
         <Comune>${escapeXml(emittente.comune)}</Comune>
         <Provincia>${escapeXml(emittente.provincia)}</Provincia>
-        <Nazione>${escapeXml(emittente.nazione)}</Nazione>
+        <Nazione>${escapeXml(emittente.nazione || 'IT')}</Nazione>
       </Sede>
     </CedentePrestatore>
     <CessionarioCommittente>
