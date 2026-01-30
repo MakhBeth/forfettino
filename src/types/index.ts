@@ -23,6 +23,13 @@ export interface Cliente {
   rate?: number;
   billingStartDate?: string; // YYYY-MM-DD
   color?: string; // Hex color for calendar display
+  // Indirizzo per fatturazione
+  indirizzo?: string;
+  numeroCivico?: string;
+  cap?: string;
+  comune?: string;
+  provincia?: string;
+  nazione?: string; // Default: IT
 }
 
 export interface Fattura {

@@ -198,7 +198,12 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
       clienteData = {
         denominazione: cliente.nome,
         partitaIva: cliente.piva,
-        nazione: 'IT', // Default, potremmo estendere Cliente con nazione
+        nazione: cliente.nazione || 'IT',
+        indirizzo: cliente.indirizzo,
+        numeroCivico: cliente.numeroCivico,
+        cap: cliente.cap,
+        comune: cliente.comune,
+        provincia: cliente.provincia,
       };
     }
 
@@ -231,6 +236,10 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
           nome: clienteCustom.denominazione,
           piva: clienteCustom.partitaIva,
           email: '',
+          indirizzo: clienteCustom.indirizzo,
+          cap: clienteCustom.cap,
+          comune: clienteCustom.comune,
+          nazione: clienteCustom.nazione,
         };
         await addCliente(nuovoCliente);
         finalClienteId = nuovoCliente.id;

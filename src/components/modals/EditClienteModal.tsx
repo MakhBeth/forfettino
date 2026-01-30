@@ -33,6 +33,37 @@ export function EditClienteModal({ isOpen, onClose, cliente, setCliente, onUpdat
           <label className="input-label">Email</label>
           <input type="email" className="input-field" value={cliente.email || ''} onChange={(e) => setCliente({ ...cliente, email: e.target.value })} />
         </div>
+
+        {/* Indirizzo per fatturazione */}
+        <div className="grid-2">
+          <div className="input-group">
+            <label className="input-label">Indirizzo</label>
+            <input type="text" className="input-field" value={cliente.indirizzo || ''} onChange={(e) => setCliente({ ...cliente, indirizzo: e.target.value })} placeholder="Via Roma" />
+          </div>
+          <div className="input-group">
+            <label className="input-label">N. Civico</label>
+            <input type="text" className="input-field" value={cliente.numeroCivico || ''} onChange={(e) => setCliente({ ...cliente, numeroCivico: e.target.value })} placeholder="1" />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 80px', gap: 12 }}>
+          <div className="input-group">
+            <label className="input-label">CAP</label>
+            <input type="text" className="input-field" value={cliente.cap || ''} onChange={(e) => setCliente({ ...cliente, cap: e.target.value })} placeholder="00100" maxLength={5} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Comune</label>
+            <input type="text" className="input-field" value={cliente.comune || ''} onChange={(e) => setCliente({ ...cliente, comune: e.target.value })} placeholder="Roma" />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Prov.</label>
+            <input type="text" className="input-field" value={cliente.provincia || ''} onChange={(e) => setCliente({ ...cliente, provincia: e.target.value })} placeholder="RM" maxLength={2} />
+          </div>
+        </div>
+        <div className="input-group">
+          <label className="input-label">Nazione</label>
+          <input type="text" className="input-field" value={cliente.nazione || 'IT'} onChange={(e) => setCliente({ ...cliente, nazione: e.target.value.toUpperCase() })} placeholder="IT" maxLength={2} />
+        </div>
+
         <div className="input-group">
           <label className="input-label">Unità di Fatturazione</label>
           <select className="input-field" value={cliente.billingUnit || ''} onChange={(e) => setCliente({ ...cliente, billingUnit: e.target.value as 'ore' | 'giornata' })}>

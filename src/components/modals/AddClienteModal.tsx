@@ -33,6 +33,37 @@ export function AddClienteModal({ isOpen, onClose, newCliente, setNewCliente, on
           <label className="input-label">Email</label>
           <input type="email" className="input-field" value={newCliente.email || ''} onChange={(e) => setNewCliente({ ...newCliente, email: e.target.value })} />
         </div>
+
+        {/* Indirizzo per fatturazione */}
+        <div className="grid-2">
+          <div className="input-group">
+            <label className="input-label">Indirizzo</label>
+            <input type="text" className="input-field" value={newCliente.indirizzo || ''} onChange={(e) => setNewCliente({ ...newCliente, indirizzo: e.target.value })} placeholder="Via Roma" />
+          </div>
+          <div className="input-group">
+            <label className="input-label">N. Civico</label>
+            <input type="text" className="input-field" value={newCliente.numeroCivico || ''} onChange={(e) => setNewCliente({ ...newCliente, numeroCivico: e.target.value })} placeholder="1" />
+          </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 80px', gap: 12 }}>
+          <div className="input-group">
+            <label className="input-label">CAP</label>
+            <input type="text" className="input-field" value={newCliente.cap || ''} onChange={(e) => setNewCliente({ ...newCliente, cap: e.target.value })} placeholder="00100" maxLength={5} />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Comune</label>
+            <input type="text" className="input-field" value={newCliente.comune || ''} onChange={(e) => setNewCliente({ ...newCliente, comune: e.target.value })} placeholder="Roma" />
+          </div>
+          <div className="input-group">
+            <label className="input-label">Prov.</label>
+            <input type="text" className="input-field" value={newCliente.provincia || ''} onChange={(e) => setNewCliente({ ...newCliente, provincia: e.target.value })} placeholder="RM" maxLength={2} />
+          </div>
+        </div>
+        <div className="input-group">
+          <label className="input-label">Nazione</label>
+          <input type="text" className="input-field" value={newCliente.nazione || 'IT'} onChange={(e) => setNewCliente({ ...newCliente, nazione: e.target.value.toUpperCase() })} placeholder="IT" maxLength={2} />
+        </div>
+
         <div className="input-group">
           <label className="input-label">Colore Calendario</label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
