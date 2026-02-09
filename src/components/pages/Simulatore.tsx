@@ -14,6 +14,7 @@ import {
   ALIQUOTA_STANDARD,
   COEFFICIENTI_ATECO,
 } from "../../lib/constants/fiscali";
+import { calcolaFiscale } from "../../lib/utils/calculations";
 import { parseCurrency, formatCurrency } from "../../lib/utils/formatting";
 import { Currency } from "../ui/Currency";
 
@@ -61,24 +62,7 @@ export function Simulatore() {
   const fatturatoNum = parseCurrency(fatturato);
 
   const calculations = useMemo(() => {
-    const imponibile = fatturatoNum * (coefficienteMedio / 100);
-    const irpef = imponibile * aliquotaIrpef;
-    const inps = imponibile * aliquotaInps;
-    const totaleTasse = irpef + inps;
-    const nettoStimato = fatturatoNum - totaleTasse;
-    const percentualeNetto =
-      fatturatoNum > 0 ? (nettoStimato / fatturatoNum) * 100 : 0;
-    const percentualeLimite = (fatturatoNum / LIMITE_FATTURATO) * 100;
-
-    return {
-      imponibile,
-      irpef,
-      inps,
-      totaleTasse,
-      nettoStimato,
-      percentualeNetto,
-      percentualeLimite,
-    };
+    return calcolaFiscale(fatturatoNum, coefficienteMedio, aliquotaIrpef, aliquotaInps);
   }, [fatturatoNum, coefficienteMedio, aliquotaIrpef, aliquotaInps]);
 
   const isOverLimit = fatturatoNum > LIMITE_FATTURATO;

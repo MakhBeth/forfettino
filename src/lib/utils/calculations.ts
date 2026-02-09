@@ -25,27 +25,33 @@ export const calcolaCoefficientiMedio = (codiciAteco: Record<string, number>): n
   return somma / valori.length;
 };
 
-// Calculate imponibile from fatturato
-export const calcolaImponibile = (fatturato: number, coefficiente: number): number => {
-  return fatturato * (coefficiente / 100);
-};
+export interface CalcoloFiscale {
+  imponibile: number;
+  inps: number;
+  irpef: number;
+  totaleTasse: number;
+  nettoStimato: number;
+  percentualeNetto: number;
+  percentualeLimite: number;
+}
 
-// Calculate IRPEF
-export const calcolaIRPEF = (imponibile: number, aliquota: number): number => {
-  return imponibile * aliquota;
-};
-
-// Calculate INPS
-export const calcolaINPS = (imponibile: number): number => {
-  return imponibile * INPS_GESTIONE_SEPARATA;
-};
-
-// Calculate net income
-export const calcolaReddito = (fatturato: number, coefficiente: number, aliquota: number): number => {
-  const imponibile = calcolaImponibile(fatturato, coefficiente);
-  const irpef = calcolaIRPEF(imponibile, aliquota);
-  const inps = calcolaINPS(imponibile);
-  return fatturato - irpef - inps;
+// Calcolo fiscale forfettario completo.
+// I contributi previdenziali (INPS) sono deducibili dal reddito imponibile
+// prima di applicare l'imposta sostitutiva (art. 1, c. 64, L. 190/2014).
+export const calcolaFiscale = (
+  fatturato: number,
+  coefficiente: number,
+  aliquotaIrpef: number,
+  aliquotaInps: number = INPS_GESTIONE_SEPARATA,
+): CalcoloFiscale => {
+  const imponibile = fatturato * (coefficiente / 100);
+  const inps = imponibile * aliquotaInps;
+  const irpef = (imponibile - inps) * aliquotaIrpef;
+  const totaleTasse = irpef + inps;
+  const nettoStimato = fatturato - totaleTasse;
+  const percentualeNetto = fatturato > 0 ? (nettoStimato / fatturato) * 100 : 0;
+  const percentualeLimite = (fatturato / LIMITE_FATTURATO) * 100;
+  return { imponibile, inps, irpef, totaleTasse, nettoStimato, percentualeNetto, percentualeLimite };
 };
 
 // Calculate progress percentage towards limit

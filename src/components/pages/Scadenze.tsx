@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CalendarClock, Euro, Percent, Info, Save, RefreshCw, Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { INPS_GESTIONE_SEPARATA, ALIQUOTA_RIDOTTA, ALIQUOTA_STANDARD, COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
+import { ALIQUOTA_RIDOTTA, ALIQUOTA_STANDARD, COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
+import { calcolaFiscale } from '../../lib/utils/calculations';
 import { generatePaymentSchedule, calculateScheduleTotals } from '../../lib/utils/paymentScheduler';
 import { parseDateLocal, formatDateLong } from '../../lib/utils/dateHelpers';
 import { parseCurrency, formatCurrency } from '../../lib/utils/formatting';
@@ -79,9 +80,10 @@ export function Scadenze() {
   const parsedManualFatturato = parseCurrency(manualFatturato);
   const totaleFatturato = useManualFatturato ? parsedManualFatturato : fatturatoFromRecords;
   
-  const redditoImponibile = totaleFatturato * (coefficienteMedio / 100);
-  const irpefTotale = redditoImponibile * aliquotaIrpef;
-  const inpsTotale = redditoImponibile * INPS_GESTIONE_SEPARATA;
+  const fiscale = calcolaFiscale(totaleFatturato, coefficienteMedio, aliquotaIrpef);
+  const redditoImponibile = fiscale.imponibile;
+  const irpefTotale = fiscale.irpef;
+  const inpsTotale = fiscale.inps;
   
   const parsedAccontiIrpef = parseCurrency(manualAccontiIrpef);
   const parsedAccontiInps = parseCurrency(manualAccontiInps);

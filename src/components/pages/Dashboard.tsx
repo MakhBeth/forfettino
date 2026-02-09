@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Users, Clock, AlertTriangle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { LIMITE_FATTURATO, INPS_GESTIONE_SEPARATA, ALIQUOTA_RIDOTTA, ALIQUOTA_STANDARD, MAX_HISTORICAL_YEARS, COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
-import { getWorkLogQuantita } from '../../lib/utils/calculations';
+import { LIMITE_FATTURATO, ALIQUOTA_RIDOTTA, ALIQUOTA_STANDARD, MAX_HISTORICAL_YEARS, COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
+import { calcolaFiscale } from '../../lib/utils/calculations';
 import { Currency } from '../ui/Currency';
 
 // Accessible patterns for colorblind users
@@ -251,77 +251,13 @@ function VerticalBarChart({ data }: { data: { mese: string; totale: number }[] }
   );
 }
 
-// Horizontal Bar Chart SVG Component
-function HorizontalBarChart({ data }: { data: { nome: string; totaleOre: number }[] }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const maxValue = Math.max(...data.map(d => d.totaleOre), 1);
-
-  const rowHeight = 36;
-  const padding = { top: 10, right: 50, bottom: 10, left: 120 };
-  const width = 500;
-  const height = padding.top + padding.bottom + data.length * rowHeight;
-  const chartWidth = width - padding.left - padding.right;
-
-  return (
-    <div style={{ position: 'relative', width: '100%' }}>
-      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
-        {data.map((d, i) => {
-          const barW = Math.max((d.totaleOre / maxValue) * chartWidth, 4);
-          const y = padding.top + i * rowHeight;
-          const barH = rowHeight * 0.6;
-          const isHovered = hoveredIndex === i;
-
-          return (
-            <g key={i}>
-              {/* Label */}
-              <text
-                x={padding.left - 10}
-                y={y + rowHeight / 2}
-                textAnchor="end"
-                fill={isHovered ? 'var(--text-primary)' : 'var(--text-muted)'}
-                fontSize="12"
-                dominantBaseline="middle"
-              >
-                {d.nome.length > 14 ? d.nome.slice(0, 12) + '...' : d.nome}
-              </text>
-              {/* Bar */}
-              <rect
-                x={padding.left}
-                y={y + (rowHeight - barH) / 2}
-                width={barW}
-                height={barH}
-                fill={isHovered ? 'var(--accent-primary)' : 'var(--accent-secondary)'}
-                rx="4"
-                style={{ transition: 'fill 0.15s', cursor: 'pointer' }}
-                onMouseEnter={() => setHoveredIndex(i)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              />
-              {/* Value */}
-              <text
-                x={padding.left + barW + 8}
-                y={y + rowHeight / 2}
-                fill="var(--text-primary)"
-                fontSize="12"
-                fontWeight="600"
-                dominantBaseline="middle"
-              >
-                {d.totaleOre}h
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
-
 interface DashboardProps {
   annoSelezionato: number;
   setAnnoSelezionato: (anno: number) => void;
 }
 
 export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProps) {
-  const { config, clienti, fatture, workLogs } = useApp();
+  const { config, clienti, fatture } = useApp();
 
   // Calcoli
   const annoCorrente = new Date().getFullYear();
@@ -347,20 +283,13 @@ export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProp
       }, 0) / config.codiciAteco.length
     : 78;
 
-  const redditoImponibile = totaleFatturato * (coefficienteMedio / 100);
-  const irpefDovuta = redditoImponibile * aliquotaIrpef;
-  const inpsDovuta = redditoImponibile * INPS_GESTIONE_SEPARATA;
-  const totaleTasse = irpefDovuta + inpsDovuta;
+  const fiscale = calcolaFiscale(totaleFatturato, coefficienteMedio, aliquotaIrpef);
+  const { imponibile: redditoImponibile, irpef: irpefDovuta, inps: inpsDovuta, totaleTasse } = fiscale;
 
   const fatturatoPerCliente = clienti.map(cliente => {
     const fattureCliente = fattureAnnoCorrente.filter(f => f.clienteId === cliente.id);
     return { ...cliente, totale: fattureCliente.reduce((sum, f) => sum + f.importo, 0), count: fattureCliente.length };
   }).sort((a, b) => b.totale - a.totale);
-
-  const orePerCliente = clienti.map(cliente => {
-    const logs = workLogs.filter(w => w.clienteId === cliente.id);
-    return { ...cliente, totaleOre: logs.reduce((sum, w) => sum + getWorkLogQuantita(w), 0) };
-  }).filter(c => c.totaleOre > 0).sort((a, b) => b.totaleOre - a.totaleOre);
 
   // Grafici
   const pieData = fatturatoPerCliente.slice(0, 5).map((c, i) => ({
@@ -508,13 +437,6 @@ export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProp
           <VerticalBarChart data={mesiData} />
         </div>
       </div>
-
-      {orePerCliente.length > 0 && (
-        <div className="card">
-          <h2 className="card-title">Ore Lavorate per Cliente</h2>
-          <HorizontalBarChart data={orePerCliente.slice(0, 5)} />
-        </div>
-      )}
     </>
   );
 }
