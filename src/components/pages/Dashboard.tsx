@@ -403,7 +403,7 @@ export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProp
           <div>
             <h2 className="card-title">Totale da Accantonare</h2>
             <div className="stat-value" style={{ fontSize: '2.8rem' }}><Currency amount={totaleTasse} /></div>
-            <div className="stat-label">Reddito imponibile <Currency amount={redditoImponibile} /> (coeff. {coefficienteMedio}%)</div>
+            <div className="stat-label">Reddito imponibile <Currency amount={redditoImponibile} /> (coeff. {coefficienteMedio}%) − INPS <Currency amount={inpsDovuta} /> = <Currency amount={redditoImponibile - inpsDovuta} /></div>
           </div>
           <div style={{ textAlign: 'center' }}>
             {percentualeLimite > 90 && (
