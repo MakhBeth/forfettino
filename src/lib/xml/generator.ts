@@ -55,7 +55,7 @@ export function generateFatturaXML(data: FatturaXMLData): string {
   // Calcola totali
   const totaleImponibile = righe.reduce((sum, r) => sum + (r.quantita * r.prezzoUnitario), 0);
   const bolloImporto = totaleImponibile > 77.47 ? 2.00 : 0;
-  const totaleDocumento = totaleImponibile + bolloImporto;
+  const totaleDocumento = totaleImponibile;
 
   const progressivoInvio = generateProgressivoInvio();
 

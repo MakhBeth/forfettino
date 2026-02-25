@@ -67,7 +67,7 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
   }, [righe]);
 
   const bolloImporto = totaleImponibile > 77.47 ? 2.00 : 0;
-  const totaleDocumento = totaleImponibile + bolloImporto;
+  const totaleDocumento = totaleImponibile;
 
   // Warning data passata
   const isDataPassata = useMemo(() => {
