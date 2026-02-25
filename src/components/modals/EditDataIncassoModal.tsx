@@ -29,15 +29,31 @@ export function EditDataIncassoModal({ isOpen, onClose, fattura, setFattura, onU
           </div>
         </div>
         <div className="input-group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginBottom: 12 }}>
+            <input
+              type="checkbox"
+              checked={fattura.incassato === false}
+              onChange={(e) => setFattura({ ...fattura, incassato: e.target.checked ? false : undefined })}
+              style={{ width: 18, height: 18, cursor: 'pointer' }}
+            />
+            <span style={{ fontSize: '0.9rem', fontWeight: 500, color: fattura.incassato === false ? 'var(--accent-red)' : 'var(--text-primary)' }}>
+              Non ancora incassata
+            </span>
+          </label>
           <label className="input-label">Data Incasso (Principio di Cassa)</label>
           <input
             type="date"
             className="input-field"
             value={fattura.dataIncasso || fattura.data}
             onChange={(e) => setFattura({ ...fattura, dataIncasso: e.target.value })}
+            disabled={fattura.incassato === false}
+            style={fattura.incassato === false ? { opacity: 0.5 } : undefined}
           />
           <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            💡 Per il regime forfettario, il fatturato si conta quando viene effettivamente incassato (principio di cassa).
+            {fattura.incassato === false
+              ? 'Questa fattura non verrà conteggiata nel fatturato fino a quando non sarà incassata.'
+              : 'Per il regime forfettario, il fatturato si conta quando viene effettivamente incassato (principio di cassa).'
+            }
           </div>
         </div>
         <button className="btn btn-primary" style={{ width: '100%' }} onClick={onUpdate}>

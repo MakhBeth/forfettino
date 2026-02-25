@@ -41,6 +41,7 @@ export interface Fattura {
   data: string;
   dataIncasso?: string;
   importo: number;
+  incassato?: boolean;
   duplicateKey?: string;
 }
 

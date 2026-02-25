@@ -269,10 +269,14 @@ export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProp
   const annoPiuVecchio = annoCorrente - MAX_HISTORICAL_YEARS + 1;
 
   const fattureAnnoCorrente = fatture.filter(f => {
+    if (f.incassato === false) return false;
     const dataRiferimento = f.dataIncasso || f.data;
     return new Date(dataRiferimento).getFullYear() === annoSelezionato;
   });
   const totaleFatturato = fattureAnnoCorrente.reduce((sum, f) => sum + f.importo, 0);
+
+  const fattureDaIncassare = fatture.filter(f => f.incassato === false);
+  const totaleDaIncassare = fattureDaIncassare.reduce((sum, f) => sum + f.importo, 0);
   const percentualeLimite = (totaleFatturato / LIMITE_FATTURATO) * 100;
   const rimanenteLimite = LIMITE_FATTURATO - totaleFatturato;
 
@@ -299,6 +303,7 @@ export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProp
   const mesiData = Array.from({ length: 12 }, (_, i) => ({
     mese: new Date(annoSelezionato, i, 1).toLocaleString('it-IT', { month: 'short' }),
     totale: fatture.filter(f => {
+      if (f.incassato === false) return false;
       const dataRiferimento = f.dataIncasso || f.data;
       const d = new Date(dataRiferimento);
       return d.getMonth() === i && d.getFullYear() === annoSelezionato;
@@ -397,6 +402,18 @@ export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProp
           <div className="stat-label">Gestione Separata 26.07%</div>
         </div>
       </div>
+
+      {fattureDaIncassare.length > 0 && (
+        <div className="card" style={{ borderLeft: '4px solid var(--accent-red)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h2 className="card-title">Fatture da Incassare</h2>
+              <div className="stat-label">{fattureDaIncassare.length} fattur{fattureDaIncassare.length === 1 ? 'a' : 'e'} in attesa di pagamento</div>
+            </div>
+            <div className="stat-value" style={{ color: 'var(--accent-red)' }}><Currency amount={totaleDaIncassare} /></div>
+          </div>
+        </div>
+      )}
 
       <div className="card" style={{ background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(4,120,87,0.1) 100%)' }}>
         <div className="grid-3" style={{ alignItems: 'center' }}>

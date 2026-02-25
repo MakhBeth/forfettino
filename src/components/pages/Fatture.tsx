@@ -68,6 +68,7 @@ export function FatturePage({ setShowModal, setEditingFattura }: FattureProps) {
   // Calculate client summaries for current year
   const annoCorrente = new Date().getFullYear();
   const fattureAnnoCorrente = fatture.filter(f => {
+    if (f.incassato === false) return false;
     const dataRiferimento = f.dataIncasso || f.data;
     return new Date(dataRiferimento).getFullYear() === annoCorrente;
   });
@@ -211,16 +212,23 @@ export function FatturePage({ setShowModal, setEditingFattura }: FattureProps) {
                 const dataEmissioneDate = new Date(f.data);
                 const isDiversa = f.dataIncasso && f.dataIncasso !== f.data;
 
+                const isNonIncassata = f.incassato === false;
+
                 return (
-                  <tr key={f.id}>
+                  <tr key={f.id} style={isNonIncassata ? { opacity: 0.7 } : undefined}>
                     <td style={{ fontFamily: 'Space Mono' }}>{f.numero || '-'}</td>
                     <td>{dataEmissioneDate.toLocaleDateString('it-IT')}</td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {dataIncassoDate.toLocaleDateString('it-IT')}
-                        {isDiversa && (
-                          <span style={{ fontSize: '0.7rem', color: 'var(--accent-orange)', fontWeight: 500 }}>modificata</span>
-                        )}
+                        {isNonIncassata
+                          ? <span style={{ fontSize: '0.75rem', color: 'var(--accent-red)', fontWeight: 600 }}>da incassare</span>
+                          : <>
+                              {dataIncassoDate.toLocaleDateString('it-IT')}
+                              {isDiversa && (
+                                <span style={{ fontSize: '0.7rem', color: 'var(--accent-orange)', fontWeight: 500 }}>modificata</span>
+                              )}
+                            </>
+                        }
                         <button
                           className="btn btn-secondary btn-sm"
                           style={{ padding: '4px 8px', marginLeft: 'auto' }}

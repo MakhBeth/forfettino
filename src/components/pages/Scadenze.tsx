@@ -71,6 +71,7 @@ export function Scadenze() {
 
   const fattureAnnoRiferimento = useMemo(() => {
     return fatture.filter(f => {
+      if (f.incassato === false) return false;
       const dataRiferimento = f.dataIncasso || f.data;
       return new Date(dataRiferimento).getFullYear() === annoRiferimento;
     });
