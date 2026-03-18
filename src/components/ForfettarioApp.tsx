@@ -24,6 +24,7 @@ import {
   autoPopulateConfig,
 } from "../lib/utils/configAutoPopulate";
 import type { Cliente, Fattura, ImportSummary, WorkLog } from "../types";
+import { MISC_CLIENT_ID } from "../types";
 import { useRoute, type Route } from "../hooks/useRoute";
 import "../styles/theme.css";
 
@@ -149,6 +150,10 @@ function ForfettarioAppInner() {
 
   // Initialize design style on app load
   useDesignStyle();
+
+  // MISC virtual client for non-billable work (conferences, maintenance, etc.)
+  const miscClient: Cliente = { id: MISC_CLIENT_ID, userId: '', nome: '🔧 Misc', billingUnit: 'ore', rate: 0, color: '#8b5cf6' };
+  const clientiWithMisc = [...clienti, miscClient];
 
   const { currentRoute: currentPage, navigate: setCurrentPage } = useRoute();
   const [showModal, setShowModal] = useState<string | null>(null);
@@ -741,7 +746,7 @@ function ForfettarioAppInner() {
               selectedDate={selectedDate}
               newWorkLog={newWorkLog}
               setNewWorkLog={setNewWorkLog}
-              clienti={clienti}
+              clienti={clientiWithMisc}
               onAdd={async () => {
                 if (
                   !selectedDate ||
@@ -786,7 +791,7 @@ function ForfettarioAppInner() {
               onClose={() => setShowModal(null)}
               workLog={editingWorkLog}
               setWorkLog={setEditingWorkLog}
-              clienti={clienti}
+              clienti={clientiWithMisc}
               onUpdate={async () => {
                 if (!editingWorkLog) return;
 
@@ -851,7 +856,7 @@ function ForfettarioAppInner() {
               selectedDate={selectedDate}
               newWorkLog={newWorkLog}
               setNewWorkLog={setNewWorkLog}
-              clienti={clienti}
+              clienti={clientiWithMisc}
               onAddWorkLog={async () => {
                 if (
                   !selectedDate ||

@@ -279,7 +279,7 @@ select.input-field option {
   justify-content: flex-start;
   padding: 8px 4px;
   border-radius: 10px;
-  cursor: pointer;
+  cursor: cell;
   transition: all 0.2s;
   font-size: 0.9rem;
   position: relative;
@@ -303,6 +303,9 @@ select.input-field option {
 .calendar-day.weekend.has-work { background: rgba(16, 185, 129, 0.25); }
 .calendar-day.vacation-mode { cursor: crosshair; }
 .calendar-day.vacation-mode:hover { background: rgba(245, 158, 11, 0.2); }
+
+.calendar-day-entry { border-radius: 4px; padding: 1px 3px; margin: 0 -3px; transition: background 0.15s; cursor: pointer; }
+.calendar-day-entry:hover { background: rgba(255, 255, 255, 0.12); }
 
 .calendar-day-number {
   font-weight: 600;

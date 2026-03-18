@@ -6,11 +6,12 @@ import { getClientColor } from '../../lib/utils/colorUtils';
 import { getWorkLogQuantita } from '../../lib/utils/calculations';
 import { Currency } from '../ui/Currency';
 import type { Cliente, WorkLog } from '../../types';
-import { VACATION_CLIENT_ID } from '../../types';
+import { VACATION_CLIENT_ID, MISC_CLIENT_ID } from '../../types';
 
 // Helper to get client color (custom or generated)
 const getClientDisplayColor = (cliente: Cliente | undefined, clientId: string): string => {
   if (clientId === VACATION_CLIENT_ID) return '#f59e0b'; // Amber for vacation
+  if (clientId === MISC_CLIENT_ID) return '#8b5cf6'; // Violet for misc
   if (cliente?.color) return cliente.color;
   return getClientColor(clientId);
 };
@@ -70,7 +71,11 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
   const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
   const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
 
-  const recapData = clienti
+  // Include MISC as a virtual client for recap calculations
+  const miscClient: Cliente = { id: MISC_CLIENT_ID, userId: '', nome: '🔧 Misc', billingUnit: 'ore', rate: 0, color: '#8b5cf6' };
+  const allClients = [...clienti, miscClient];
+
+  const recapData = allClients
     .map(cliente => {
       const clientLogs = workLogs.filter(log => {
         const logDate = new Date(log.data);
@@ -161,7 +166,7 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
   const totalYearWorkedDays = yearWorkedDates.length;
 
   // Yearly Recap Calculation (per client)
-  const yearlyRecapData = clienti
+  const yearlyRecapData = allClients
     .map(cliente => {
       const clientLogs = workLogs.filter(log => {
         const logDate = new Date(log.data);
@@ -243,9 +248,11 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
                 const allDays = logs.every(l => l.tipo === 'giornata');
 
                 if (clienteId === VACATION_CLIENT_ID) {
-                  // Vacation entry - create a fake client for display
                   const vacationCliente: Cliente = { id: VACATION_CLIENT_ID, userId: '', nome: '🏖️' };
                   clientData.push({ cliente: vacationCliente, total, tipo: 'giornata', logs, isVacation: true });
+                } else if (clienteId === MISC_CLIENT_ID) {
+                  const miscCliente: Cliente = { id: MISC_CLIENT_ID, userId: '', nome: '🔧 Misc', billingUnit: 'ore' };
+                  clientData.push({ cliente: miscCliente, total, tipo: allDays ? 'giornata' : 'ore', logs, isVacation: false });
                 } else {
                   const cliente = clienti.find(c => c.id === clienteId);
                   if (cliente) {
@@ -362,10 +369,13 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
                     {clientData.map(({ cliente, total, tipo, logs }) => {
                       const color = getClientDisplayColor(cliente, cliente.id);
                       const unit = tipo === 'giornata' ? 'gg' : 'h';
+                      const note = logs[0]?.note;
                       return (
                         <div
                           key={cliente.id}
-                          style={{ color, fontSize: '0.65rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'grab', lineHeight: 1.3 }}
+                          className="calendar-day-entry"
+                          style={{ cursor: 'pointer', lineHeight: 1.3 }}
+                          title="Edit"
                           draggable
                           onDragStart={(e) => {
                             e.stopPropagation();
@@ -376,8 +386,23 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
                             }
                           }}
                           onDragEnd={() => setDraggedWorkLog(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const mainLog = logs[0];
+                            if (mainLog) {
+                              setEditingWorkLog(mainLog);
+                              setShowModal('edit-work');
+                            }
+                          }}
                         >
-                          {cliente.nome.substring(0, 10)}{cliente.nome.length > 10 ? '..' : ''} {formatNumber(total, 1)}{unit}
+                          <div style={{ color, fontSize: '0.65rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {cliente.nome.substring(0, 10)}{cliente.nome.length > 10 ? '..' : ''} {formatNumber(total, 1)}{unit}
+                          </div>
+                          {note && (
+                            <div style={{ fontSize: '0.55rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', lineHeight: 1.2 }}>
+                              {note}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -536,9 +561,8 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
                   switch (activitySort.field) {
                     case 'data': return dir * (new Date(a.data).getTime() - new Date(b.data).getTime());
                     case 'cliente': {
-                      const clienteA = a.clienteId === VACATION_CLIENT_ID ? '🏖️ Vacation' : (clienti.find(c => c.id === a.clienteId)?.nome || '');
-                      const clienteB = b.clienteId === VACATION_CLIENT_ID ? '🏖️ Vacation' : (clienti.find(c => c.id === b.clienteId)?.nome || '');
-                      return dir * clienteA.localeCompare(clienteB);
+                      const getName = (id: string) => id === VACATION_CLIENT_ID ? '🏖️ Vacation' : id === MISC_CLIENT_ID ? '🔧 Misc' : (clienti.find(c => c.id === id)?.nome || '');
+                      return dir * getName(a.clienteId).localeCompare(getName(b.clienteId));
                     }
                     case 'durata': return dir * (getWorkLogQuantita(a) - getWorkLogQuantita(b));
                     default: return 0;
@@ -546,15 +570,18 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
                 })
                 .map(log => {
                   const isVacation = log.clienteId === VACATION_CLIENT_ID;
-                  const logCliente = isVacation ? undefined : clienti.find(c => c.id === log.clienteId);
+                  const isMisc = log.clienteId === MISC_CLIENT_ID;
+                  const isSpecial = isVacation || isMisc;
+                  const logCliente = isSpecial ? undefined : clienti.find(c => c.id === log.clienteId);
                   const logColor = getClientDisplayColor(logCliente, log.clienteId);
+                  const displayName = isVacation ? '🏖️ Vacation' : isMisc ? '🔧 Misc' : (logCliente?.nome || '-');
                   return (
                     <tr key={log.id}>
                       <td>{new Date(log.data + 'T12:00:00').toLocaleDateString('it-IT')}</td>
                       <td>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: logColor, flexShrink: 0, display: 'inline-block' }} />
-                          {isVacation ? '🏖️ Vacation' : (logCliente?.nome || '-')}
+                          {displayName}
                         </span>
                       </td>
                       <td><span className={`badge ${isVacation ? 'badge-yellow' : 'badge-green'}`}>{log.tipo === 'giornata' ? `${getWorkLogQuantita(log)} giornata` : `${getWorkLogQuantita(log)} ore`}</span></td>
