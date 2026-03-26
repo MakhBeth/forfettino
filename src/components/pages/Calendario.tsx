@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Trash2, ArrowUpDown, Edit, Palmtree, CalendarClock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { getCalendarDays, formatDate } from '../../lib/utils/dateHelpers';
+import { getCalendarDays, formatDate, parseDateLocal } from '../../lib/utils/dateHelpers';
 import { getClientColor } from '../../lib/utils/colorUtils';
 import { getWorkLogQuantita } from '../../lib/utils/calculations';
 import { Currency } from '../ui/Currency';
@@ -69,7 +69,7 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
 
   // Monthly Recap Calculation
   const monthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-  const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+  const monthEnd = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0, 23, 59, 59, 999);
 
   // Include MISC as a virtual client for recap calculations
   const miscClient: Cliente = { id: MISC_CLIENT_ID, userId: '', nome: '🔧 Misc', billingUnit: 'ore', rate: 0, color: '#8b5cf6' };
@@ -78,11 +78,11 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
   const recapData = allClients
     .map(cliente => {
       const clientLogs = workLogs.filter(log => {
-        const logDate = new Date(log.data);
+        const logDate = parseDateLocal(log.data);
         const isInMonth = logDate >= monthStart && logDate <= monthEnd;
 
         if (cliente.billingStartDate) {
-          const billingStart = new Date(cliente.billingStartDate);
+          const billingStart = parseDateLocal(cliente.billingStartDate);
           return isInMonth && log.clienteId === cliente.id && logDate >= billingStart;
         }
 
@@ -105,14 +105,14 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
 
   // Helper to check if a date is a weekend
   const isWeekend = (dateStr: string): boolean => {
-    const date = new Date(dateStr);
+    const date = parseDateLocal(dateStr);
     const day = date.getDay();
     return day === 0 || day === 6;
   };
 
   // Calculate worked and vacation days for the month summary
   const monthWorkLogs = workLogs.filter(log => {
-    const logDate = new Date(log.data);
+    const logDate = parseDateLocal(log.data);
     return logDate >= monthStart && logDate <= monthEnd;
   });
 
@@ -134,18 +134,18 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
   const todayDate = new Date();
   todayDate.setHours(0, 0, 0, 0);
 
-  const pastWorkedDays = Array.from(workedDates).filter(date => new Date(date) <= todayDate).length;
+  const pastWorkedDays = Array.from(workedDates).filter(date => parseDateLocal(date) <= todayDate).length;
   const totalMonthVacationDays = monthVacationDates.length;
   const monthVacationDaysExcludingWeekends = monthVacationDates.filter(date => !isWeekend(date)).length;
 
   // Calculate yearly vacation days
   const yearStart = new Date(currentMonth.getFullYear(), 0, 1);
-  const yearEnd = new Date(currentMonth.getFullYear(), 11, 31);
+  const yearEnd = new Date(currentMonth.getFullYear(), 11, 31, 23, 59, 59, 999);
 
   const yearVacationDates = Array.from(new Set(
     workLogs
       .filter(log => {
-        const logDate = new Date(log.data);
+        const logDate = parseDateLocal(log.data);
         return log.clienteId === VACATION_CLIENT_ID && logDate >= yearStart && logDate <= yearEnd;
       })
       .map(log => log.data)
@@ -158,7 +158,7 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
   const yearWorkedDates = Array.from(new Set(
     workLogs
       .filter(log => {
-        const logDate = new Date(log.data);
+        const logDate = parseDateLocal(log.data);
         return log.clienteId !== VACATION_CLIENT_ID && logDate >= yearStart && logDate <= yearEnd && logDate <= todayDate;
       })
       .map(log => log.data)
@@ -169,11 +169,11 @@ export function Calendario({ setShowModal, setSelectedDate, setEditingWorkLog, s
   const yearlyRecapData = allClients
     .map(cliente => {
       const clientLogs = workLogs.filter(log => {
-        const logDate = new Date(log.data);
+        const logDate = parseDateLocal(log.data);
         const isInYear = logDate >= yearStart && logDate <= yearEnd;
 
         if (cliente.billingStartDate) {
-          const billingStart = new Date(cliente.billingStartDate);
+          const billingStart = parseDateLocal(cliente.billingStartDate);
           return isInYear && log.clienteId === cliente.id && logDate >= billingStart;
         }
 
