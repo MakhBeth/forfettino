@@ -48,7 +48,7 @@ export function EditClienteModal({ isOpen, onClose, cliente, setCliente, onUpdat
         <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr 80px', gap: 12 }}>
           <div className="input-group">
             <label className="input-label">CAP</label>
-            <input type="text" className="input-field" value={cliente.cap || ''} onChange={(e) => setCliente({ ...cliente, cap: e.target.value })} placeholder="00100" maxLength={5} />
+            <input type="text" className="input-field" value={cliente.cap || ''} onChange={(e) => setCliente({ ...cliente, cap: e.target.value })} placeholder="00100" />
           </div>
           <div className="input-group">
             <label className="input-label">Comune</label>
