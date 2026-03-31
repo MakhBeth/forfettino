@@ -120,6 +120,10 @@ const GeneratePDF = (invoice: Invoice, options: PDFOptions) => {
   });
 
   const currencySymbol = (currency: string): string => {
+    // Check custom map from config first
+    if (options.currencyMap?.[currency]) {
+      return options.currencyMap[currency];
+    }
     switch (currency) {
       case 'EUR':
         return '\u20AC';
@@ -148,16 +152,20 @@ const GeneratePDF = (invoice: Invoice, options: PDFOptions) => {
         <Text style={{ fontSize: 12, color: colors.primary }}>
           {company.name}
         </Text>
-        <Text style={styles.companyLine}>
-          {t.vatNumber}: {company.vat}
-        </Text>
+        {company.vat ? (
+          <Text style={styles.companyLine}>
+            {t.vatNumber}: {company.vat}
+          </Text>
+        ) : null}
         {office && (
           <React.Fragment>
+            {(office.address || office.number) && (
+              <Text style={styles.companyLine}>
+                {[office.address, office.number].filter(Boolean).join(' ')}
+              </Text>
+            )}
             <Text style={styles.companyLine}>
-              {office.address} {office.number}
-            </Text>
-            <Text style={styles.companyLine}>
-              {office.cap} {office.city} {office.district && `(${office.district})`} {office.country}
+              {[office.cap, office.city, office.district ? `(${office.district})` : null, office.country].filter(Boolean).join(' ')}
             </Text>
           </React.Fragment>
         )}
@@ -437,6 +445,13 @@ const GeneratePDF = (invoice: Invoice, options: PDFOptions) => {
                 </React.Fragment>
               )}
             </View>
+            {options.exchangeRateNote && (
+              <View style={{ marginTop: 12, padding: 8, backgroundColor: colors.lighterGray, borderRadius: 3 }}>
+                <Text style={{ fontSize: 8, color: colors.lighterText }}>
+                  {options.exchangeRateNote}
+                </Text>
+              </View>
+            )}
             <View
               style={{
                 flexDirection: 'row',
@@ -453,7 +468,7 @@ const GeneratePDF = (invoice: Invoice, options: PDFOptions) => {
                     </Text>
                     <Text style={{ color: colors.lighterText }}>
                       {installment.stampDuty.toLocaleString(locale)}
-                      {currencySymbol(installment.currency)}
+                      {'\u20AC'}
                     </Text>
                   </React.Fragment>
                 )}

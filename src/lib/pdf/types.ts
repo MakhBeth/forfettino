@@ -80,4 +80,6 @@ export interface PDFOptions {
   footerLink?: string;
   locale?: string;
   logoSrc?: string;
+  currencyMap?: Record<string, string>; // e.g. { "EUR": "€", "GBP": "£" }
+  exchangeRateNote?: string; // e.g. "Cambio BCE del 31/03/2026: 1 EUR = 0.835 GBP"
 }

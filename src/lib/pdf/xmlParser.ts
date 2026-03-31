@@ -80,7 +80,31 @@ function parseInstallment(bodyEl: Element): Installment {
 
   // Parse lines
   const lineElements = beniServizi?.querySelectorAll('DettaglioLinee') || [];
-  const lines: Line[] = Array.from(lineElements).map(parseLine);
+  const lineElementsArray = Array.from(lineElements);
+  const lines: Line[] = lineElementsArray.map(parseLine);
+
+  // Detect multi-currency: check AltriDatiGestionali with TipoDato=VALUTA
+  // When present, the XML amounts are in EUR but the original amounts are in foreign currency.
+  // For the courtesy invoice (PDF), we want to show the original foreign currency amounts.
+  let foreignCurrency: string | null = null;
+  lineElementsArray.forEach((lineEl, idx) => {
+    const altriDatiEls = lineEl.querySelectorAll('AltriDatiGestionali');
+    for (const dati of Array.from(altriDatiEls)) {
+      const tipoDato = getText(dati, 'TipoDato');
+      if (tipoDato === 'VALUTA') {
+        const refText = getText(dati, 'RiferimentoTesto') || '';
+        const refNum = getNumber(dati, 'RiferimentoNumero');
+        // Extract currency code (e.g., "GBP - Importo originale: 100.00" → "GBP")
+        const currMatch = refText.match(/^([A-Z]{3})/);
+        if (currMatch) foreignCurrency = currMatch[1];
+        // Replace line amounts with original foreign currency values
+        if (refNum > 0 && lines[idx]) {
+          const qty = lines[idx].quantity || 1;
+          lines[idx] = { ...lines[idx], amount: refNum, singlePrice: refNum / qty };
+        }
+      }
+    }
+  });
 
   // Parse tax summary
   const taxSummary: TaxSummary = {
@@ -113,10 +137,25 @@ function parseInstallment(bodyEl: Element): Installment {
   const bolloStr = getText(generalData || bodyEl, 'DatiBollo ImportoBollo');
   const stampDuty = bolloStr ? parseFloat(bolloStr) : undefined;
 
-  // Parse total
-  const totalAmount = getNumber(generalData || bodyEl, 'ImportoTotaleDocumento') ||
-                      (payment?.amount) ||
-                      lines.reduce((sum, l) => sum + l.amount, 0);
+  // Determine currency and totals
+  // If foreign currency detected, use original amounts; otherwise use XML EUR amounts
+  let currency = getText(generalData || bodyEl, 'Divisa') || 'EUR';
+  let totalAmount: number;
+
+  if (foreignCurrency) {
+    currency = foreignCurrency;
+    // Recalculate totals from foreign currency line amounts
+    const foreignTotal = lines.reduce((sum, l) => sum + l.amount, 0);
+    totalAmount = foreignTotal;
+    taxSummary.paymentAmount = foreignTotal;
+    if (payment) {
+      payment.amount = foreignTotal;
+    }
+  } else {
+    totalAmount = getNumber(generalData || bodyEl, 'ImportoTotaleDocumento') ||
+                  (payment?.amount) ||
+                  lines.reduce((sum, l) => sum + l.amount, 0);
+  }
 
   // Parse causale (can be multiple)
   const causaleEls = generalData?.querySelectorAll('Causale') || [];
@@ -133,7 +172,7 @@ function parseInstallment(bodyEl: Element): Installment {
 
   return {
     number: getText(generalData || bodyEl, 'Numero') || '',
-    currency: getText(generalData || bodyEl, 'Divisa') || 'EUR',
+    currency,
     totalAmount,
     issueDate,
     description,

@@ -1,8 +1,9 @@
 import { useState, useMemo, useRef } from 'react';
-import { X, Download, Plus, Trash2, AlertTriangle, Upload } from 'lucide-react';
+import { X, Download, Plus, Trash2, AlertTriangle, Upload, RefreshCw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useDialog } from '../../hooks/useDialog';
 import { generateFatturaXML, downloadXML, generateFileName, parseFatturaXMLForEdit } from '../../lib/xml/generator';
+import { getECBRate, convertToEUR } from '../../lib/utils/ecbRates';
 import type { NuovaFatturaRiga } from '../../types';
 
 interface NuovaFatturaModalProps {
@@ -14,13 +15,40 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
   const { config, clienti, fatture, showToast, addFattura, addCliente } = useApp();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Valute configurate
+  const valute = config.valute?.length ? config.valute : [{ codice: 'EUR', simbolo: '€' }];
+
   // Form state
   const [clienteId, setClienteId] = useState<string>('');
   const [numero, setNumero] = useState<string>('');
   const [data, setData] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [valutaSelezionata, setValutaSelezionata] = useState<string>(valute[0].codice);
+  const [tassoCambio, setTassoCambio] = useState<string>('');
+  const [dataCambio, setDataCambio] = useState<string>('');
+  const [isFetchingRate, setIsFetchingRate] = useState(false);
   const [righe, setRighe] = useState<NuovaFatturaRiga[]>([
     { descrizione: '', quantita: 1, prezzoUnitario: 0 }
   ]);
+
+  const isMultiCurrency = valutaSelezionata !== 'EUR';
+  const tassoCambioNum = parseFloat(tassoCambio) || 0;
+
+  const fetchExchangeRate = async () => {
+    setIsFetchingRate(true);
+    try {
+      const result = await getECBRate(valutaSelezionata);
+      if (result) {
+        setTassoCambio(result.rate.toString());
+        setDataCambio(result.date);
+        showToast(`Cambio BCE ${result.date}: 1 EUR = ${result.rate} ${valutaSelezionata}`);
+      } else {
+        showToast(`Tasso non disponibile per ${valutaSelezionata}`, 'error');
+      }
+    } catch {
+      showToast('Errore nel recupero del cambio BCE', 'error');
+    }
+    setIsFetchingRate(false);
+  };
 
   // Cliente personalizzato (se non in lista)
   const [clienteCustom, setClienteCustom] = useState({
@@ -66,8 +94,12 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
     return righe.reduce((sum, r) => sum + (r.quantita * r.prezzoUnitario), 0);
   }, [righe]);
 
-  const bolloImporto = totaleImponibile > 77.47 ? 2.00 : 0;
+  const totaleImponibileEUR = isMultiCurrency && tassoCambioNum > 0
+    ? convertToEUR(totaleImponibile, tassoCambioNum)
+    : totaleImponibile;
+  const bolloImporto = totaleImponibileEUR > 77.47 ? 2.00 : 0;
   const totaleDocumento = totaleImponibile;
+  const simboloValuta = (valute.find(v => v.codice === valutaSelezionata) || valute[0]).simbolo;
 
   // Warning data passata
   const isDataPassata = useMemo(() => {
@@ -207,7 +239,13 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
       };
     }
 
-    // Genera XML
+    // Validazione cambio per valuta estera
+    if (isMultiCurrency && tassoCambioNum <= 0) {
+      showToast('Inserisci il tasso di cambio BCE per la valuta estera', 'error');
+      return;
+    }
+
+    // Genera XML (importi convertiti in EUR internamente dal generator)
     const xml = generateFatturaXML({
       emittente: config.emittente,
       partitaIva: config.partitaIva,
@@ -217,6 +255,9 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
       righe: righeValide,
       iban: config.iban,
       beneficiario: `${config.emittente.nome} ${config.emittente.cognome}`,
+      valuta: isMultiCurrency ? valutaSelezionata : undefined,
+      tassoCambio: isMultiCurrency ? tassoCambioNum : undefined,
+      dataCambio: isMultiCurrency ? dataCambio || data : undefined,
     });
 
     // Genera nome file e scarica
@@ -249,15 +290,20 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
         finalClienteNome = cliente?.nome || '';
       }
 
+      const valutaCorrente = valute.find(v => v.codice === valutaSelezionata) || valute[0];
       const nuovaFattura = {
         id: Date.now().toString(),
         numero,
-        importo: totaleImponibile,
+        importo: isMultiCurrency ? Math.round(totaleImponibileEUR * 100) / 100 : totaleImponibile, // Always EUR for tax
+        ...(isMultiCurrency ? { importoValuta: totaleImponibile } : {}),
         data,
         dataIncasso: data,
         clienteId: finalClienteId,
         clienteNome: finalClienteNome,
         duplicateKey: `${numero}-${data}-${totaleImponibile}`,
+        valuta: valutaCorrente.codice,
+        valutaSimbolo: valutaCorrente.simbolo,
+        ...(isMultiCurrency ? { tassoCambio: tassoCambioNum } : {}),
       };
 
       await addFattura(nuovaFattura);
@@ -275,6 +321,9 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
     setNumero(prossimoNumero);
     setData(new Date().toISOString().split('T')[0]);
     setRighe([{ descrizione: '', quantita: 1, prezzoUnitario: 0 }]);
+    setValutaSelezionata(valute[0].codice);
+    setTassoCambio('');
+    setDataCambio('');
     setUseCustomCliente(false);
     setClienteCustom({
       denominazione: '',
@@ -428,8 +477,8 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
           )}
         </div>
 
-        {/* Numero e Data */}
-        <div className="grid-2">
+        {/* Numero, Data e Valuta */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12 }}>
           <div className="input-group">
             <label className="input-label">Numero Fattura *</label>
             <input
@@ -449,7 +498,80 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
               onChange={(e) => setData(e.target.value)}
             />
           </div>
+          {valute.length > 1 && (
+            <div className="input-group">
+              <label className="input-label">Valuta</label>
+              <select
+                className="input-field"
+                value={valutaSelezionata}
+                onChange={(e) => setValutaSelezionata(e.target.value)}
+              >
+                {valute.map(v => (
+                  <option key={v.codice} value={v.codice}>{v.simbolo} {v.codice}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
+
+        {/* Tasso di cambio BCE (solo per valuta estera) */}
+        {isMultiCurrency && (
+          <div style={{
+            marginBottom: 16,
+            padding: 16,
+            background: 'var(--bg-secondary)',
+            borderRadius: 8,
+            border: '1px solid var(--border)',
+          }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+              <div className="input-group" style={{ flex: 1, marginBottom: 0 }}>
+                <label className="input-label">Cambio BCE (1 EUR = ? {valutaSelezionata}) *</label>
+                <input
+                  type="number"
+                  className="input-field"
+                  value={tassoCambio}
+                  onChange={(e) => setTassoCambio(e.target.value)}
+                  placeholder="Es: 0.835"
+                  step="0.0001"
+                  min="0"
+                  style={{ fontFamily: 'Space Mono' }}
+                />
+              </div>
+              <button
+                className="btn btn-secondary"
+                onClick={fetchExchangeRate}
+                disabled={isFetchingRate}
+                title="Recupera ultimo cambio BCE"
+                style={{ marginBottom: 0, whiteSpace: 'nowrap' }}
+              >
+                <RefreshCw size={16} className={isFetchingRate ? 'spinning' : ''} aria-hidden="true" />
+                {isFetchingRate ? 'Carico...' : 'Cambio BCE'}
+              </button>
+            </div>
+            {dataCambio && (
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 6 }}>
+                Tasso del {dataCambio}
+              </div>
+            )}
+            {tassoCambioNum > 0 && totaleImponibile > 0 && (
+              <div style={{
+                marginTop: 10,
+                padding: '8px 12px',
+                background: 'var(--bg-primary)',
+                borderRadius: 6,
+                fontSize: '0.9rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Controvalore EUR:</span>
+                <span style={{ fontFamily: 'Space Mono', fontWeight: 600, color: 'var(--accent-green)' }}>
+                  €{totaleImponibileEUR.toFixed(2)}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Warning data passata */}
         {isDataPassata && (
@@ -530,7 +652,7 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
                 />
               </div>
               <div style={{ textAlign: 'right', marginTop: 4, fontFamily: 'Space Mono', fontSize: '0.9rem' }}>
-                Totale riga: €{(riga.quantita * riga.prezzoUnitario).toFixed(2)}
+                Totale riga: {simboloValuta}{(riga.quantita * riga.prezzoUnitario).toFixed(2)}
               </div>
             </div>
           ))}
@@ -545,7 +667,7 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
             <span>Imponibile:</span>
-            <span style={{ fontFamily: 'Space Mono' }}>€{totaleImponibile.toFixed(2)}</span>
+            <span style={{ fontFamily: 'Space Mono' }}>{simboloValuta}{totaleImponibile.toFixed(2)}</span>
           </div>
           {bolloImporto > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, color: 'var(--text-muted)' }}>
@@ -563,9 +685,21 @@ export function NuovaFatturaModal({ isOpen, onClose }: NuovaFatturaModalProps) {
           }}>
             <span>Totale Documento:</span>
             <span style={{ fontFamily: 'Space Mono', color: 'var(--accent-green)' }}>
-              €{totaleDocumento.toFixed(2)}
+              {simboloValuta}{totaleDocumento.toFixed(2)}
             </span>
           </div>
+          {isMultiCurrency && tassoCambioNum > 0 && totaleImponibile > 0 && (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              marginTop: 8,
+              fontSize: '0.85rem',
+              color: 'var(--text-muted)',
+            }}>
+              <span>Controvalore EUR (per SDI):</span>
+              <span style={{ fontFamily: 'Space Mono' }}>€{totaleImponibileEUR.toFixed(2)}</span>
+            </div>
+          )}
         </div>
 
         {/* Checkbox aggiungi a fatture */}

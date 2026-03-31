@@ -37,6 +37,7 @@ export const DEFAULT_CONFIG: Config = {
   codiciAteco: [],
   nomeAttivita: '',
   aliquotaOverride: null,
+  valute: [{ codice: 'EUR', simbolo: '€' }],
   courtesyInvoice: {
     primaryColor: '#6699cc',
     textColor: '#033243',

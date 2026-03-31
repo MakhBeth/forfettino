@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Download, Upload, Database, Plus, X, Edit, Trash2, Users, Palette, Building, FolderSync, RefreshCw, FolderOpen, AlertCircle, UserCircle } from 'lucide-react';
+import { Download, Upload, Database, Plus, X, Edit, Trash2, Users, Palette, Building, FolderSync, RefreshCw, FolderOpen, AlertCircle, UserCircle, Coins, ChevronUp, ChevronDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import type { Cliente, EmittenteConfig, User } from '../../types';
+import type { Cliente, EmittenteConfig, User, ValutaConfig } from '../../types';
 import { COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
 import { ThemeSwitch } from '../shared/ThemeSwitch';
 import { DesignStyleSwitch } from '../shared/DesignStyleSwitch';
@@ -49,6 +49,7 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
   const [showUnsupportedMessage, setShowUnsupportedMessage] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [newUserName, setNewUserName] = useState('');
+  const [newValuta, setNewValuta] = useState<ValutaConfig>({ codice: '', simbolo: '' });
 
   const handleSelectSyncFolder = async () => {
     if (!isFileSystemAccessSupported()) {
@@ -507,6 +508,113 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
             />
           </div>
         </div>
+      </div>
+
+      {/* Valute */}
+      <div className="card">
+        <h2 className="card-title"><Coins size={16} aria-hidden="true" style={{ display: 'inline', marginRight: 8, verticalAlign: 'middle' }} />Valute</h2>
+
+        {(config.valute || []).length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+            {(config.valute || []).map((v, i) => (
+              <div key={`${v.codice}-${i}`} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 12px',
+                background: i === 0 ? 'rgba(4, 120, 87, 0.1)' : 'var(--bg-secondary)',
+                borderRadius: 8,
+                border: i === 0 ? '1px solid var(--accent-green)' : '1px solid var(--border)',
+              }}>
+                <span style={{ fontWeight: 600, minWidth: 24, textAlign: 'center' }}>{v.simbolo}</span>
+                <span style={{ flex: 1 }}>{v.codice}</span>
+                {i === 0 && (
+                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 500 }}>default</span>
+                )}
+                <div style={{ display: 'flex', gap: 2 }}>
+                  <button
+                    type="button"
+                    aria-label={`Sposta ${v.codice} su`}
+                    disabled={i === 0}
+                    style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: i === 0 ? 'var(--text-muted)' : 'var(--text-secondary)', opacity: i === 0 ? 0.3 : 1 }}
+                    onClick={() => {
+                      const arr = [...(config.valute || [])];
+                      [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+                      setConfig({ ...config, valute: arr });
+                    }}
+                  >
+                    <ChevronUp size={16} aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Sposta ${v.codice} giù`}
+                    disabled={i === (config.valute || []).length - 1}
+                    style={{ background: 'none', border: 'none', cursor: i === (config.valute || []).length - 1 ? 'default' : 'pointer', padding: 2, display: 'flex', alignItems: 'center', color: i === (config.valute || []).length - 1 ? 'var(--text-muted)' : 'var(--text-secondary)', opacity: i === (config.valute || []).length - 1 ? 0.3 : 1 }}
+                    onClick={() => {
+                      const arr = [...(config.valute || [])];
+                      [arr[i], arr[i + 1]] = [arr[i + 1], arr[i]];
+                      setConfig({ ...config, valute: arr });
+                    }}
+                  >
+                    <ChevronDown size={16} aria-hidden="true" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Rimuovi valuta ${v.codice}`}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', color: 'var(--text-secondary)', borderRadius: 4 }}
+                  onClick={() => setConfig({ ...config, valute: (config.valute || []).filter((_, j) => j !== i) })}
+                >
+                  <X size={14} aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
+          <div className="input-group" style={{ flex: 1 }}>
+            <label className="input-label" htmlFor="nuova-valuta-codice">Codice ISO 4217</label>
+            <input
+              type="text"
+              id="nuova-valuta-codice"
+              className="input-field"
+              value={newValuta.codice}
+              onChange={(e) => setNewValuta({ ...newValuta, codice: e.target.value.toUpperCase() })}
+              placeholder="Es: GBP"
+              maxLength={3}
+            />
+          </div>
+          <div className="input-group" style={{ flex: 1 }}>
+            <label className="input-label" htmlFor="nuova-valuta-simbolo">Simbolo</label>
+            <input
+              type="text"
+              id="nuova-valuta-simbolo"
+              className="input-field"
+              value={newValuta.simbolo}
+              onChange={(e) => setNewValuta({ ...newValuta, simbolo: e.target.value })}
+              placeholder="Es: £"
+              maxLength={3}
+            />
+          </div>
+          <button
+            className="btn btn-primary"
+            style={{ marginBottom: 16 }}
+            onClick={() => {
+              if (!newValuta.codice || !newValuta.simbolo) return;
+              if ((config.valute || []).some(v => v.codice === newValuta.codice)) return;
+              setConfig({ ...config, valute: [...(config.valute || []), { ...newValuta }] });
+              setNewValuta({ codice: '', simbolo: '' });
+            }}
+            disabled={!newValuta.codice || !newValuta.simbolo}
+            aria-label="Aggiungi valuta"
+          >
+            <Plus size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+          La prima valuta è quella predefinita. Per fatture in valuta estera, il cambio BCE verrà richiesto in fase di generazione XML.
+        </p>
       </div>
 
       {/* Clienti */}

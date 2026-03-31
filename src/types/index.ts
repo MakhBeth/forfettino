@@ -41,9 +41,13 @@ export interface Fattura {
   clienteNome: string;
   data: string;
   dataIncasso?: string;
-  importo: number;
+  importo: number; // Always in EUR (for tax calculations)
+  importoValuta?: number; // Original amount in foreign currency (only when non-EUR)
   incassato?: boolean;
   duplicateKey?: string;
+  valuta?: string;  // Currency code e.g. "EUR", "GBP"
+  valutaSimbolo?: string; // Currency symbol e.g. "€", "£"
+  tassoCambio?: number; // ECB exchange rate: 1 EUR = X foreign currency
 }
 
 export interface WorkLog {
@@ -55,6 +59,11 @@ export interface WorkLog {
   tipo: 'ore' | 'giornata';
   quantita?: number; // Fractional quantity (hours or days)
   note?: string;
+}
+
+export interface ValutaConfig {
+  codice: string;  // e.g. "EUR", "GBP", "USD"
+  simbolo: string; // e.g. "€", "£", "$"
 }
 
 export interface Config {
@@ -69,6 +78,7 @@ export interface Config {
   annoApertura: number;
   codiciAteco: string[];
   iban?: string;
+  valute?: ValutaConfig[];
   courtesyInvoice?: CourtesyInvoiceConfig;
   emittente?: EmittenteConfig;
 }

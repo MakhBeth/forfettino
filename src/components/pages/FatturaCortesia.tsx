@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { parseXmlToInvoice } from '../../lib/pdf/xmlParser';
 import { saveAs } from 'file-saver';
 import type { Invoice, PDFOptions, Line } from '../../lib/pdf/types';
+import type { ValutaConfig } from '../../types';
 
 // WCAG contrast ratio utilities
 function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
@@ -71,6 +72,8 @@ const MIN_CONTRAST_RATIO = 4.5; // WCAG AA for normal text
 
 export function FatturaCortesia() {
   const { config, setConfig, showToast } = useApp();
+  const valute: ValutaConfig[] = config.valute?.length ? config.valute : [{ codice: 'EUR', simbolo: '€' }];
+  const currencyMap = Object.fromEntries(valute.map(v => [v.codice, v.simbolo]));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // PDF Settings (from config)
@@ -212,6 +215,7 @@ export function FatturaCortesia() {
         footerLink: footerLink || undefined,
         locale,
         logoSrc: logoBase64,
+        currencyMap,
       };
 
       const pdfDoc = GeneratePDF(parsedInvoice, options);
@@ -490,6 +494,7 @@ export function FatturaCortesia() {
               <InvoiceEditorContent
                 invoice={parsedInvoice}
                 onInvoiceChange={setParsedInvoice}
+                valute={valute}
               />
             </div>
           </details>
@@ -563,9 +568,11 @@ function CollapsibleSection({
 function InvoiceEditorContent({
   invoice,
   onInvoiceChange,
+  valute,
 }: {
   invoice: Invoice;
   onInvoiceChange: (invoice: Invoice) => void;
+  valute: ValutaConfig[];
 }) {
   const inst = invoice.installments[0];
 
@@ -890,13 +897,28 @@ function InvoiceEditorContent({
         <div className="grid-2">
           <div className="input-group">
             <label className="input-label">Valuta</label>
-            <input
-              type="text"
-              className="input-field"
-              value={inst.currency || 'EUR'}
-              onChange={(e) => updateInstallment({ currency: e.target.value })}
-              maxLength={3}
-            />
+            {valute.length > 1 ? (
+              <select
+                className="input-field"
+                value={inst.currency}
+                onChange={(e) => updateInstallment({ currency: e.target.value })}
+              >
+                {valute.map(v => (
+                  <option key={v.codice} value={v.codice}>{v.simbolo} {v.codice}</option>
+                ))}
+                {!valute.some(v => v.codice === inst.currency) && (
+                  <option value={inst.currency}>{inst.currency}</option>
+                )}
+              </select>
+            ) : (
+              <input
+                type="text"
+                className="input-field"
+                value={inst.currency || 'EUR'}
+                onChange={(e) => updateInstallment({ currency: e.target.value })}
+                maxLength={3}
+              />
+            )}
           </div>
           <div className="input-group">
             <label className="input-label">Bollo (se presente)</label>

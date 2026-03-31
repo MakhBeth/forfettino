@@ -18,9 +18,13 @@ export interface FatturaXMLData {
   };
   numero: string;
   data: string; // YYYY-MM-DD
-  righe: NuovaFatturaRiga[];
+  righe: NuovaFatturaRiga[]; // Amounts in original currency
   iban?: string;
   beneficiario?: string;
+  // Multi-currency support
+  valuta?: string; // ISO 4217 code (e.g. "GBP"). Omit or "EUR" for euro invoices.
+  tassoCambio?: number; // ECB rate: 1 EUR = X foreign currency
+  dataCambio?: string; // Date of the ECB rate (YYYY-MM-DD)
 }
 
 // Escape caratteri speciali XML
@@ -52,33 +56,58 @@ function generateProgressivoInvio(): string {
 export function generateFatturaXML(data: FatturaXMLData): string {
   const { emittente, partitaIva, cliente, numero, data: dataFattura, righe, iban, beneficiario } = data;
 
-  // Calcola totali
-  const totaleImponibile = righe.reduce((sum, r) => sum + (r.quantita * r.prezzoUnitario), 0);
-  const bolloImporto = totaleImponibile > 77.47 ? 2.00 : 0;
-  const totaleDocumento = totaleImponibile;
+  const isMultiCurrency = data.valuta && data.valuta !== 'EUR' && data.tassoCambio;
+  const tassoCambio = data.tassoCambio || 1;
+
+  // Converte importo da valuta estera a EUR (se necessario)
+  const toEUR = (amount: number) => isMultiCurrency ? amount / tassoCambio : amount;
+
+  // Calcola totali in EUR (per SDI, gli importi DEVONO essere in EUR - Art. 21 DPR 633/72)
+  const totaleImponibileValuta = righe.reduce((sum, r) => sum + (r.quantita * r.prezzoUnitario), 0);
+  const totaleImponibileEUR = toEUR(totaleImponibileValuta);
+  const bolloImporto = totaleImponibileEUR > 77.47 ? 2.00 : 0;
+  const totaleDocumentoEUR = totaleImponibileEUR;
 
   const progressivoInvio = generateProgressivoInvio();
 
-  // Genera linee dettaglio
+  // Genera linee dettaglio (importi in EUR per SDI)
+  // Se multi-valuta, aggiunge AltriDatiGestionali con importi originali
   const lineeXml = righe.map((riga, index) => {
-    const prezzoTotale = riga.quantita * riga.prezzoUnitario;
+    const prezzoTotaleValuta = riga.quantita * riga.prezzoUnitario;
+    const prezzoUnitarioEUR = toEUR(riga.prezzoUnitario);
+    const prezzoTotaleEUR = toEUR(prezzoTotaleValuta);
+
+    const altriDatiXml = isMultiCurrency ? `
+        <AltriDatiGestionali>
+          <TipoDato>VALUTA</TipoDato>
+          <RiferimentoTesto>${data.valuta} - Importo originale: ${formatAmount(prezzoTotaleValuta)}</RiferimentoTesto>
+          <RiferimentoNumero>${formatAmount(prezzoTotaleValuta)}</RiferimentoNumero>
+          <RiferimentoData>${data.dataCambio || dataFattura}</RiferimentoData>
+        </AltriDatiGestionali>` : '';
+
     return `      <DettaglioLinee>
         <NumeroLinea>${index + 1}</NumeroLinea>
         <Descrizione>${escapeXml(riga.descrizione)}</Descrizione>
         <Quantita>${formatAmount(riga.quantita)}</Quantita>
-        <PrezzoUnitario>${formatAmount(riga.prezzoUnitario)}</PrezzoUnitario>
-        <PrezzoTotale>${formatAmount(prezzoTotale)}</PrezzoTotale>
+        <PrezzoUnitario>${formatAmount(prezzoUnitarioEUR)}</PrezzoUnitario>
+        <PrezzoTotale>${formatAmount(prezzoTotaleEUR)}</PrezzoTotale>
         <AliquotaIVA>0.00</AliquotaIVA>
-        <Natura>N2.2</Natura>
+        <Natura>N2.2</Natura>${altriDatiXml}
       </DettaglioLinee>`;
   }).join('\n');
 
-  // Sezione bollo (solo se > 77.47€)
+  // Sezione bollo (solo se > 77.47€ di imponibile EUR)
   const bolloXml = bolloImporto > 0 ? `
         <DatiBollo>
           <BolloVirtuale>SI</BolloVirtuale>
           <ImportoBollo>${formatAmount(bolloImporto)}</ImportoBollo>
         </DatiBollo>` : '';
+
+  // Causale con info cambio valuta (se multi-valuta)
+  const causaleXml = isMultiCurrency
+    ? `
+        <Causale>Importi convertiti in EUR al cambio BCE del ${data.dataCambio || dataFattura}: 1 EUR = ${tassoCambio} ${data.valuta}. Totale in ${data.valuta}: ${formatAmount(totaleImponibileValuta)}</Causale>`
+    : '';
 
   // Sezione cliente - determina se usare Denominazione o Nome/Cognome
   const clienteAnagrafica = cliente.denominazione
@@ -98,7 +127,7 @@ export function generateFatturaXML(data: FatturaXMLData): string {
     ? `<CodiceFiscale>${escapeXml(cliente.codiceFiscale)}</CodiceFiscale>`
     : '';
 
-  // Sezione pagamento
+  // Sezione pagamento (ImportoPagamento in EUR per SDI)
   const pagamentoXml = iban ? `
     <DatiPagamento>
       <CondizioniPagamento>TP02</CondizioniPagamento>
@@ -107,11 +136,12 @@ export function generateFatturaXML(data: FatturaXMLData): string {
         <ModalitaPagamento>MP05</ModalitaPagamento>
         <DataRiferimentoTerminiPagamento>${dataFattura}</DataRiferimentoTerminiPagamento>
         <DataScadenzaPagamento>${dataFattura}</DataScadenzaPagamento>
-        <ImportoPagamento>${formatAmount(totaleDocumento)}</ImportoPagamento>
+        <ImportoPagamento>${formatAmount(totaleDocumentoEUR)}</ImportoPagamento>
         <IBAN>${escapeXml(iban)}</IBAN>
       </DettaglioPagamento>
     </DatiPagamento>` : '';
 
+  // Divisa è sempre EUR per SDI (Art. 21 DPR 633/72)
   const xml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <ns2:FatturaElettronica versione="FPR12" xmlns:ns2="http://ivaservizi.agenziaentrate.gov.it/docs/xsd/fatture/v1.2">
   <FatturaElettronicaHeader>
@@ -170,8 +200,8 @@ export function generateFatturaXML(data: FatturaXMLData): string {
         <TipoDocumento>TD01</TipoDocumento>
         <Divisa>EUR</Divisa>
         <Data>${dataFattura}</Data>
-        <Numero>${escapeXml(numero)}</Numero>${bolloXml}
-        <ImportoTotaleDocumento>${formatAmount(totaleDocumento)}</ImportoTotaleDocumento>
+        <Numero>${escapeXml(numero)}</Numero>${bolloXml}${causaleXml}
+        <ImportoTotaleDocumento>${formatAmount(totaleDocumentoEUR)}</ImportoTotaleDocumento>
       </DatiGeneraliDocumento>
     </DatiGenerali>
     <DatiBeniServizi>
@@ -179,7 +209,7 @@ ${lineeXml}
       <DatiRiepilogo>
         <AliquotaIVA>0.00</AliquotaIVA>
         <Natura>N2.2</Natura>
-        <ImponibileImporto>${formatAmount(totaleImponibile)}</ImponibileImporto>
+        <ImponibileImporto>${formatAmount(totaleImponibileEUR)}</ImponibileImporto>
         <Imposta>0.00</Imposta>
       </DatiRiepilogo>
     </DatiBeniServizi>${pagamentoXml}

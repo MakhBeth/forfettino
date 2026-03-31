@@ -5,6 +5,7 @@ import { useDialog } from '../../hooks/useDialog';
 import { parseXmlToInvoice, validateInvoice } from '../../lib/pdf/xmlParser';
 import { saveAs } from 'file-saver';
 import type { Invoice, Company, Line, Installment, PDFOptions } from '../../lib/pdf/types';
+import type { ValutaConfig } from '../../types';
 
 interface CourtesyInvoiceModalProps {
   isOpen: boolean;
@@ -14,6 +15,9 @@ interface CourtesyInvoiceModalProps {
 export function CourtesyInvoiceModal({ isOpen, onClose }: CourtesyInvoiceModalProps) {
   const { config, showToast } = useApp();
   const { dialogRef, handleClick, handleMouseDown } = useDialog(isOpen, onClose);
+
+  const valute: ValutaConfig[] = config.valute?.length ? config.valute : [{ codice: 'EUR', simbolo: '€' }];
+  const currencyMap = Object.fromEntries(valute.map(v => [v.codice, v.simbolo]));
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -152,7 +156,7 @@ export function CourtesyInvoiceModal({ isOpen, onClose }: CourtesyInvoiceModalPr
         import('@react-pdf/renderer'),
       ]);
 
-      const pdfDoc = GeneratePDF(invoice, pdfOptions);
+      const pdfDoc = GeneratePDF(invoice, { ...pdfOptions, currencyMap });
       const blob = await pdf(pdfDoc).toBlob();
 
       const filename = `fattura-cortesia-${invoice.installments[0]?.number || 'new'}.pdf`;
@@ -242,6 +246,7 @@ export function CourtesyInvoiceModal({ isOpen, onClose }: CourtesyInvoiceModalPr
           {activeTab === 'lines' && invoice && (
             <LinesEditor
               installments={invoice.installments}
+              valute={valute}
               onUpdateInstallment={updateInstallment}
               onUpdateLine={updateLine}
               onAddLine={addLine}
@@ -468,12 +473,14 @@ function CompanyEditor({
 // Lines Editor
 function LinesEditor({
   installments,
+  valute,
   onUpdateInstallment,
   onUpdateLine,
   onAddLine,
   onRemoveLine,
 }: {
   installments: Installment[];
+  valute: ValutaConfig[];
   onUpdateInstallment: (index: number, updates: Partial<Installment>) => void;
   onUpdateLine: (instIndex: number, lineIndex: number, updates: Partial<Line>) => void;
   onAddLine: (instIndex: number) => void;
@@ -506,15 +513,28 @@ function LinesEditor({
             </div>
             <div className="input-group">
               <label className="input-label">Valuta</label>
-              <select
-                className="input-field"
-                value={inst.currency}
-                onChange={(e) => onUpdateInstallment(instIndex, { currency: e.target.value })}
-              >
-                <option value="EUR">EUR</option>
-                <option value="USD">USD</option>
-                <option value="GBP">GBP</option>
-              </select>
+              {valute.length > 1 ? (
+                <select
+                  className="input-field"
+                  value={inst.currency}
+                  onChange={(e) => onUpdateInstallment(instIndex, { currency: e.target.value })}
+                >
+                  {valute.map(v => (
+                    <option key={v.codice} value={v.codice}>{v.simbolo} {v.codice}</option>
+                  ))}
+                  {!valute.some(v => v.codice === inst.currency) && (
+                    <option value={inst.currency}>{inst.currency}</option>
+                  )}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  className="input-field"
+                  value={inst.currency}
+                  onChange={(e) => onUpdateInstallment(instIndex, { currency: e.target.value.toUpperCase() })}
+                  placeholder="EUR"
+                />
+              )}
             </div>
           </div>
 

@@ -240,7 +240,18 @@ export function FatturePage({ setShowModal, setEditingFattura }: FattureProps) {
                       </div>
                     </td>
                     <td>{f.clienteNome || clienti.find(c => c.id === f.clienteId)?.nome || '-'}</td>
-                    <td style={{ fontWeight: 600, textAlign: 'right' }}><Currency amount={f.importo} tabular /></td>
+                    <td style={{ fontWeight: 600, textAlign: 'right' }}>
+                      {f.importoValuta && f.valuta && f.valuta !== 'EUR' ? (
+                        <div>
+                          <Currency amount={f.importoValuta} symbol={f.valutaSimbolo || '€'} tabular />
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                            <Currency amount={f.importo} symbol="€" tabular />
+                          </div>
+                        </div>
+                      ) : (
+                        <Currency amount={f.importo} symbol={f.valutaSimbolo || '€'} tabular />
+                      )}
+                    </td>
                     <td><button className="btn btn-danger" onClick={() => removeFattura(f.id)} aria-label="Elimina fattura"><Trash2 size={16} aria-hidden="true" /></button></td>
                   </tr>
                 );
@@ -260,7 +271,7 @@ export function FatturePage({ setShowModal, setEditingFattura }: FattureProps) {
             {fatturatoPerCliente.filter(c => c.totale > 0).map(c => (
               <div key={c.id} style={{ padding: 16, background: 'var(--bg-secondary)', borderRadius: 12 }}>
                 <div style={{ fontWeight: 600, marginBottom: 4 }}>{c.nome}</div>
-                <div style={{ fontSize: '1.3rem', color: 'var(--accent-green)' }}><Currency amount={c.totale} /></div>
+                <div style={{ fontSize: '1.3rem', color: 'var(--accent-green)' }}><Currency amount={c.totale} symbol="€" /></div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{c.count} fatture</div>
               </div>
             ))}
