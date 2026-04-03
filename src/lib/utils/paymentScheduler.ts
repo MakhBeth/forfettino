@@ -60,7 +60,7 @@ const getTrancheDeadline = (fiscalYear: number, trancheIndex: number): Date => {
 
 const formatTrancheLabel = (trancheIndex: number, totalTranches: number): string => {
   if (totalTranches === 1) {
-    return 'Saldo e Primo Acconto IRPEF/INPS';
+    return 'Saldo e Primo Acconto imposta sostitutiva/INPS';
   }
   return `Rata ${trancheIndex + 1}/${totalTranches} - Saldo e Primo Acconto`;
 };
@@ -112,11 +112,11 @@ export const generatePaymentSchedule = (input: PaymentScheduleInput): PaymentSch
 
   const novemberTotal = totalTax2ndAcconto + totalInps2ndAcconto;
   if (novemberTotal > 0) {
-    schedule.push({
-      date: formatDate(adjustForWeekend(new Date(fiscalYear, 10, GIORNO_SCADENZA_SALDO))),
-      label: 'Secondo Acconto IRPEF e INPS',
-      principalAmount: roundToTwoDecimals(novemberTotal),
-      interestAmount: 0,
+      schedule.push({
+        date: formatDate(adjustForWeekend(new Date(fiscalYear, 10, GIORNO_SCADENZA_SALDO))),
+        label: 'Secondo Acconto imposta sostitutiva e INPS',
+        principalAmount: roundToTwoDecimals(novemberTotal),
+        interestAmount: 0,
       totalAmount: roundToTwoDecimals(novemberTotal),
       components: {
         taxSaldo: 0,

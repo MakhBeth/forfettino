@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Users, Clock, AlertTriangle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { LIMITE_FATTURATO, ALIQUOTA_RIDOTTA, ALIQUOTA_STANDARD, MAX_HISTORICAL_YEARS, COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
+import { LIMITE_FATTURATO, MAX_HISTORICAL_YEARS } from '../../lib/constants/fiscali';
 import { calcolaFiscale } from '../../lib/utils/calculations';
+import { calcolaContributiPrevidenziali, calcolaCoefficienteMedioAteco, getAliquotaImpostaSostitutiva, getInpsCalculationInput, getRegimeThresholdStatus } from '../../lib/utils/forfettario';
 import { Currency } from '../ui/Currency';
 
 // Accessible patterns for colorblind users
@@ -261,11 +262,12 @@ export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProp
 
   // Calcoli
   const annoCorrente = new Date().getFullYear();
-  const anniAttivita = annoCorrente - config.annoApertura;
-  const aliquotaIrpefBase = anniAttivita < 5 ? ALIQUOTA_RIDOTTA : ALIQUOTA_STANDARD;
-  const aliquotaIrpef = (config.aliquotaOverride !== null && config.aliquotaOverride >= 0 && config.aliquotaOverride <= 100)
-    ? config.aliquotaOverride / 100
-    : aliquotaIrpefBase;
+  const anniAttivita = annoSelezionato - config.annoApertura;
+  const aliquotaIrpef = getAliquotaImpostaSostitutiva({
+    annoApertura: config.annoApertura,
+    annoImposta: annoSelezionato,
+    aliquotaOverride: config.aliquotaOverride,
+  });
   const annoPiuVecchio = annoCorrente - MAX_HISTORICAL_YEARS + 1;
 
   const fattureAnnoCorrente = fatture.filter(f => {
@@ -280,15 +282,12 @@ export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProp
   const percentualeLimite = (totaleFatturato / LIMITE_FATTURATO) * 100;
   const rimanenteLimite = LIMITE_FATTURATO - totaleFatturato;
 
-  const coefficienteMedio = config.codiciAteco.length > 0
-    ? config.codiciAteco.reduce((sum, code) => {
-        const prefix = code.substring(0, 2);
-        return sum + (COEFFICIENTI_ATECO[prefix] || COEFFICIENTI_ATECO.default);
-      }, 0) / config.codiciAteco.length
-    : 78;
+  const coefficienteMedio = calcolaCoefficienteMedioAteco(config.codiciAteco);
+  const thresholdStatus = getRegimeThresholdStatus(totaleFatturato);
 
-  const fiscale = calcolaFiscale(totaleFatturato, coefficienteMedio, aliquotaIrpef);
+  const fiscale = calcolaFiscale(totaleFatturato, coefficienteMedio, aliquotaIrpef, getInpsCalculationInput(config));
   const { imponibile: redditoImponibile, irpef: irpefDovuta, inps: inpsDovuta, totaleTasse } = fiscale;
+  const previdenzialeInfo = calcolaContributiPrevidenziali(redditoImponibile, config);
 
   const fatturatoPerCliente = clienti.map(cliente => {
     const fattureCliente = fattureAnnoCorrente.filter(f => f.clienteId === cliente.id);
@@ -387,19 +386,23 @@ export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProp
         </div>
 
         <div className="card">
-          <h2 className="card-title">IRPEF da accantonare</h2>
+          <h2 className="card-title">Imposta sostitutiva da accantonare</h2>
           <div className="stat-value" style={{ color: 'var(--accent-orange)' }}><Currency amount={irpefDovuta} /></div>
           <div className="stat-label">
             Aliquota {(aliquotaIrpef * 100).toFixed(2)}%
             {config.aliquotaOverride !== null && ' (custom)'}
-            {config.aliquotaOverride === null && anniAttivita < 5 && ' (agevolato)'}
+            {config.aliquotaOverride === null && anniAttivita < 5 && ' (agevolata)'}
           </div>
         </div>
 
         <div className="card">
           <h2 className="card-title">INPS da accantonare</h2>
           <div className="stat-value" style={{ color: 'var(--accent-orange)' }}><Currency amount={inpsDovuta} /></div>
-          <div className="stat-label">Gestione Separata 26.07%</div>
+          <div className="stat-label">
+            {previdenzialeInfo.usesFixedAmount
+              ? `${previdenzialeInfo.label}${previdenzialeInfo.reductionApplied ? ' · riduzione 35%' : ''}`
+              : `${previdenzialeInfo.label} ${((previdenzialeInfo.effectiveRate ?? 0) * 100).toFixed(2)}%`}
+          </div>
         </div>
       </div>
 
@@ -426,7 +429,13 @@ export function Dashboard({ annoSelezionato, setAnnoSelezionato }: DashboardProp
             {percentualeLimite > 90 && (
               <div style={{ color: 'var(--accent-red)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <AlertTriangle size={24} aria-hidden="true" />
-                <span style={{ fontWeight: 600 }}>Vicino al limite!</span>
+                <span style={{ fontWeight: 600 }}>
+                  {thresholdStatus === 'immediate_exit'
+                    ? 'Uscita immediata dal regime'
+                    : thresholdStatus === 'next_year_exit'
+                      ? 'Uscita dal regime dall\'anno successivo'
+                      : 'Vicino alla soglia 85k'}
+                </span>
               </div>
             )}
           </div>

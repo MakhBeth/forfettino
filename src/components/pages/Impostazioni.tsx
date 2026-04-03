@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Download, Upload, Database, Plus, X, Edit, Trash2, Users, Palette, Building, FolderSync, RefreshCw, FolderOpen, AlertCircle, UserCircle, Coins, ChevronUp, ChevronDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import type { Cliente, EmittenteConfig, User, ValutaConfig } from '../../types';
-import { COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
+import { calcolaCoefficienteMedioAteco, getAliquotaImpostaSostitutiva } from '../../lib/utils/forfettario';
+import { GESTIONI_PREVIDENZIALI } from '../../lib/constants/fiscali';
 import { ThemeSwitch } from '../shared/ThemeSwitch';
 import { DesignStyleSwitch } from '../shared/DesignStyleSwitch';
 import { getClientColor } from '../../lib/utils/colorUtils';
@@ -88,12 +89,12 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
     setNewAteco('');
   };
 
-  const coefficienteMedio = config.codiciAteco.length > 0
-    ? config.codiciAteco.reduce((sum, code) => {
-        const prefix = code.substring(0, 2);
-        return sum + (COEFFICIENTI_ATECO[prefix] || COEFFICIENTI_ATECO.default);
-      }, 0) / config.codiciAteco.length
-    : 78;
+  const coefficienteMedio = calcolaCoefficienteMedioAteco(config.codiciAteco);
+  const aliquotaCorrente = getAliquotaImpostaSostitutiva({
+    annoApertura: config.annoApertura,
+    annoImposta: annoCorrente,
+    aliquotaOverride: config.aliquotaOverride,
+  });
 
   const handleAddUser = async () => {
     if (!newUserName.trim()) return;
@@ -321,11 +322,15 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
             <label className="input-label" htmlFor="anno-apertura">Anno Apertura</label>
             <input type="number" id="anno-apertura" className="input-field" value={config.annoApertura} onChange={(e) => setConfig({ ...config, annoApertura: parseInt(e.target.value) })} min={2000} max={annoCorrente} />
             <div style={{ marginTop: 8, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              {anniAttivita < 5 ? `✓ Aliquota 5% (${5 - anniAttivita} anni rimasti)` : 'Aliquota 15%'}
+              {config.aliquotaOverride !== null
+                ? `✓ Override attivo: ${(aliquotaCorrente * 100).toFixed(2)}%`
+                : anniAttivita < 5
+                  ? `✓ Aliquota agevolata 5% (${5 - anniAttivita} anni rimasti)`
+                  : 'Aliquota standard 15%'}
             </div>
           </div>
           <div className="input-group">
-            <label className="input-label" htmlFor="aliquota-override">Override Aliquota IRPEF</label>
+            <label className="input-label" htmlFor="aliquota-override">Override aliquota imposta sostitutiva</label>
             <input
               type="number"
               id="aliquota-override"
@@ -349,6 +354,88 @@ export function Impostazioni({ setShowModal, setEditingCliente, handleExport }: 
             />
           </div>
         </div>
+
+        <div className="grid-2" style={{ marginTop: 16 }}>
+          <div className="input-group">
+            <label className="input-label" htmlFor="gestione-previdenziale">Gestione Contributi Previdenziali</label>
+            <select
+              id="gestione-previdenziale"
+              className="input-field"
+              value={config.gestionePrevidenziale}
+              onChange={(e) => setConfig({
+                ...config,
+                gestionePrevidenziale: e.target.value as typeof config.gestionePrevidenziale,
+              })}
+            >
+              {GESTIONI_PREVIDENZIALI.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <div style={{ marginTop: 8, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              {config.gestionePrevidenziale === 'gestione_separata'
+                ? 'Calcolo percentuale sul reddito imponibile.'
+                : 'Usa un importo INPS annuo fisso e opzionalmente applica la riduzione del 35%.'}
+            </div>
+          </div>
+
+          {config.gestionePrevidenziale !== 'gestione_separata' ? (
+            <div className="input-group">
+              <label className="input-label" htmlFor="contributi-inps-fissi">Contributi INPS annui base</label>
+              <input
+                type="number"
+                id="contributi-inps-fissi"
+                className="input-field"
+                value={config.contributiInpsFissi ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setConfig({
+                    ...config,
+                    contributiInpsFissi: value === '' ? null : parseFloat(value),
+                  });
+                }}
+                placeholder="Es. 4521.36"
+                min={0}
+                step={0.01}
+              />
+              <div style={{ marginTop: 8, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Inserisci l'importo annuo senza riduzione, come da tuo cassetto previdenziale INPS.
+              </div>
+            </div>
+          ) : (
+            <div className="input-group">
+              <label className="input-label" htmlFor="gestione-separata-note">Aliquota INPS</label>
+              <input
+                id="gestione-separata-note"
+                className="input-field"
+                value="26.07%"
+                disabled
+                readOnly
+              />
+              <div style={{ marginTop: 8, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Modello predefinito per professionisti senza cassa, dedotto automaticamente dal reddito imponibile.
+              </div>
+            </div>
+          )}
+        </div>
+
+        {config.gestionePrevidenziale !== 'gestione_separata' && (
+          <div className="input-group" style={{ marginTop: 16 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={config.riduzioneContributiva}
+                onChange={(e) => setConfig({ ...config, riduzioneContributiva: e.target.checked })}
+                style={{ width: 18, height: 18 }}
+              />
+              <span>
+                Applica riduzione contributiva del 35%
+                <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 4 }}>
+                  Riduce l'importo INPS annuo usato nei calcoli e nell'accantonamento.
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
 
         <div style={{ marginTop: 16 }}>
           <label className="input-label">Codici ATECO</label>
