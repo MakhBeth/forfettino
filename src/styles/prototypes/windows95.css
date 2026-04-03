@@ -1,0 +1,674 @@
+/**
+ * WINDOWS 95 Theme
+ * Inspired by the classic Microsoft Windows 95 UI
+ * Color palette sourced from React95 (github.com/React95/React95)
+ *
+ * Key visual traits:
+ * - Silver/gray (#c3c7cb) surfaces with 3D beveled borders
+ * - Navy blue (#000080) accents for title bars and active elements
+ * - Hard pixel-perfect box-shadows instead of soft shadows
+ * - MS Sans Serif / Tahoma / Segoe UI font stack
+ * - 2px raised/sunken border effects on all interactive elements
+ */
+
+/* ── Variables ─────────────────────────────────────────────── */
+
+/* Win95 is an inherently "light" palette, so dark/light share the same base.
+   We intentionally keep it identical — Win95 didn't *have* a dark mode. */
+
+html[data-design="windows95"],
+html[data-design="windows95"][data-theme="dark"],
+html[data-design="windows95"][data-theme="light"] {
+  --bg-primary: #008080;          /* Classic teal desktop */
+  --bg-secondary: #c3c7cb;        /* Silver toolbar / sidebar */
+  --bg-card: #c3c7cb;             /* Panel surface */
+  --bg-card-elevated: #d4d8dc;    /* Slightly raised surface */
+  --bg-hover: #b4b8bc;            /* Hover state (darker silver) */
+  --accent-primary: #000080;      /* Navy blue (title bar, links) */
+  --accent-secondary: #1084d0;    /* Selection / highlight blue */
+  --accent-green: #008000;        /* Classic Win95 green */
+  --accent-orange: #ff8c00;       /* Warning orange */
+  --accent-red: #ff0000;          /* Error red */
+  --text-primary: #000000;        /* Black text */
+  --text-secondary: #343434;      /* Dark gray secondary */
+  --text-muted: #868a8e;          /* Disabled / muted gray */
+  --border: #868a8e;              /* Standard border gray */
+  --border-strong: #000000;       /* Strong border black */
+
+  /* Win95-specific tokens */
+  --win95-highlight: #ffffff;     /* Top-left bevel highlight */
+  --win95-light: #d2d2d2;        /* Light bevel */
+  --win95-shadow: #868a8e;       /* Bottom-right bevel shadow */
+  --win95-dark: #000000;         /* Darkest edge */
+  --win95-surface: #c3c7cb;      /* Material surface */
+  --win95-input-bg: #ffffff;     /* Input field white background */
+  --win95-titlebar: #000080;     /* Active title bar */
+  --win95-titlebar-text: #ffffff;
+  --win95-titlebar-inactive: #7f787f;
+  --win95-titlebar-inactive-text: #c6c6c6;
+
+  /* Override shadow tokens — Win95 uses hard pixel shadows, not soft blurs */
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+/* ── Typography ────────────────────────────────────────────── */
+
+html[data-design="windows95"] body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+}
+
+/* ── 3D Border Mixins (via box-shadow) ─────────────────────── */
+/* Raised: white top-left, dark bottom-right
+   Sunken: dark top-left, white bottom-right */
+
+/* ── Sidebar ───────────────────────────────────────────────── */
+
+html[data-design="windows95"] .sidebar {
+  background: var(--win95-surface);
+  border-right: none;
+  box-shadow:
+    inset -1px 0 0 0 var(--win95-shadow),
+    inset -2px 0 0 0 var(--win95-dark);
+}
+
+/* ── Logo ──────────────────────────────────────────────────── */
+
+html[data-design="windows95"] .logo {
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  color: var(--win95-titlebar);
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+html[data-design="windows95"][data-theme="light"] .logo {
+  color: var(--win95-titlebar);
+}
+
+/* ── Cards — raised panel effect ───────────────────────────── */
+
+html[data-design="windows95"] .card {
+  background: var(--win95-surface);
+  border: none;
+  border-radius: 0;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    inset 2px 2px 0px 0px var(--win95-light),
+    inset -2px -2px 0px 0px var(--win95-dark);
+}
+
+html[data-design="windows95"] .card:hover {
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    inset 2px 2px 0px 0px var(--win95-light),
+    inset -2px -2px 0px 0px var(--win95-dark);
+}
+
+/* Card title — mimic a groupbox label */
+html[data-design="windows95"] .card-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: none;
+  letter-spacing: 0;
+  margin-bottom: 12px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--win95-shadow);
+}
+
+html[data-design="windows95"] .card-title::before {
+  display: none;
+}
+
+/* ── Stat Values ───────────────────────────────────────────── */
+
+html[data-design="windows95"] .stat-value {
+  font-family: "Segoe UI", Tahoma, monospace;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--win95-titlebar);
+}
+
+html[data-design="windows95"] .stat-label {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+/* ── Buttons — classic raised 3D ───────────────────────────── */
+
+html[data-design="windows95"] .btn {
+  background: var(--win95-surface);
+  border: none;
+  border-radius: 0;
+  font-weight: 400;
+  font-size: 0.85rem;
+  padding: 6px 16px;
+  min-height: 23px;
+  color: var(--text-primary);
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    1px 1px 0px 0px var(--win95-dark);
+  transition: none;
+}
+
+html[data-design="windows95"] .btn:active {
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-shadow),
+    inset -1px -1px 0px 0px var(--win95-highlight),
+    0px 0px 0px 1px var(--win95-dark);
+  padding: 7px 15px 5px 17px;
+}
+
+html[data-design="windows95"] .btn:focus-visible {
+  outline: 1px dotted var(--text-primary);
+  outline-offset: -4px;
+}
+
+html[data-design="windows95"] .btn-primary {
+  background: var(--win95-surface);
+  color: var(--text-primary);
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    1px 1px 0px 0px var(--win95-dark),
+    0px 0px 0px 1px var(--win95-dark);
+}
+
+html[data-design="windows95"] .btn-primary:hover {
+  background: var(--bg-hover);
+}
+
+html[data-design="windows95"] .btn-secondary {
+  background: var(--win95-surface);
+  color: var(--text-primary);
+  border: none;
+}
+
+html[data-design="windows95"] .btn-secondary:hover {
+  background: var(--bg-hover);
+}
+
+html[data-design="windows95"] .btn-ghost {
+  background: transparent;
+  color: var(--win95-titlebar);
+  border: 1px solid var(--win95-shadow);
+  box-shadow: none;
+}
+
+html[data-design="windows95"] .btn-ghost:hover {
+  background: var(--bg-hover);
+}
+
+html[data-design="windows95"] .btn-danger {
+  color: var(--accent-red);
+  box-shadow: none;
+}
+
+html[data-design="windows95"] .btn-danger:hover {
+  background: rgba(255, 0, 0, 0.1);
+}
+
+html[data-design="windows95"] .btn-success {
+  background: var(--win95-surface);
+  color: var(--accent-green);
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    1px 1px 0px 0px var(--win95-dark);
+}
+
+/* ── Input Fields — sunken 3D ──────────────────────────────── */
+
+html[data-design="windows95"] .input-field {
+  background: var(--win95-input-bg);
+  border: none;
+  border-radius: 0;
+  padding: 4px 6px;
+  font-size: 13px;
+  font-family: "Segoe UI", Tahoma, sans-serif;
+  color: var(--text-primary);
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-shadow),
+    inset -1px -1px 0px 0px var(--win95-highlight),
+    inset 2px 2px 0px 0px var(--win95-dark),
+    inset -2px -2px 0px 0px var(--win95-light);
+}
+
+html[data-design="windows95"] .input-field:focus {
+  outline: none;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-shadow),
+    inset -1px -1px 0px 0px var(--win95-highlight),
+    inset 2px 2px 0px 0px var(--win95-dark),
+    inset -2px -2px 0px 0px var(--win95-light);
+}
+
+html[data-design="windows95"] select.input-field {
+  padding-right: 24px;
+}
+
+/* ── Nav Items ─────────────────────────────────────────────── */
+
+html[data-design="windows95"] .nav-item {
+  border-radius: 0;
+  font-weight: 400;
+  padding: 8px 12px;
+  margin-bottom: 2px;
+  transition: none;
+}
+
+html[data-design="windows95"] .nav-item:hover {
+  background: var(--bg-hover);
+}
+
+html[data-design="windows95"] .nav-item.active {
+  background: var(--win95-titlebar);
+  color: var(--win95-titlebar-text);
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-shadow),
+    inset -1px -1px 0px 0px var(--win95-highlight);
+}
+
+/* ── Table ─────────────────────────────────────────────────── */
+
+html[data-design="windows95"] .table th {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 4px 8px;
+  background: var(--win95-surface);
+  border-bottom: 2px solid var(--win95-shadow);
+  color: var(--text-primary);
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow);
+}
+
+html[data-design="windows95"] .table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--win95-light);
+  font-size: 13px;
+}
+
+html[data-design="windows95"] .table tr:hover {
+  background: var(--win95-titlebar);
+  color: var(--win95-titlebar-text);
+}
+
+/* ── Badges ────────────────────────────────────────────────── */
+
+html[data-design="windows95"] .badge {
+  border-radius: 0;
+  font-size: 0.75rem;
+  font-weight: 400;
+  padding: 2px 8px;
+}
+
+html[data-design="windows95"] .badge-green {
+  background: var(--accent-green);
+  color: #ffffff;
+}
+
+html[data-design="windows95"] .badge-yellow {
+  background: var(--accent-orange);
+  color: #ffffff;
+}
+
+/* ── Progress Bar — sunken track, raised fill ──────────────── */
+
+html[data-design="windows95"] .progress-bar {
+  height: 16px;
+  border-radius: 0;
+  background: var(--win95-input-bg);
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-shadow),
+    inset -1px -1px 0px 0px var(--win95-highlight),
+    inset 2px 2px 0px 0px var(--win95-dark);
+}
+
+html[data-design="windows95"] .progress-fill {
+  border-radius: 0;
+  margin: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--win95-titlebar) 0px,
+    var(--win95-titlebar) 8px,
+    var(--win95-input-bg) 8px,
+    var(--win95-input-bg) 10px
+  );
+}
+
+/* ── Modal / Dialog — title bar effect ─────────────────────── */
+
+html[data-design="windows95"] dialog.modal {
+  background: var(--win95-surface);
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    2px 2px 0px 0px var(--win95-dark),
+    inset 2px 2px 0px 0px var(--win95-light),
+    inset -2px -2px 0px 0px var(--win95-dark);
+}
+
+html[data-design="windows95"] dialog.modal::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: none;
+}
+
+html[data-design="windows95"] .modal-header {
+  background: linear-gradient(90deg, var(--win95-titlebar) 0%, var(--accent-secondary) 100%);
+  color: var(--win95-titlebar-text);
+  padding: 4px 8px;
+  margin-bottom: 0;
+}
+
+html[data-design="windows95"] .modal-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--win95-titlebar-text);
+}
+
+html[data-design="windows95"] .close-btn {
+  background: var(--win95-surface);
+  color: var(--text-primary);
+  border-radius: 0;
+  padding: 2px 6px;
+  min-width: 20px;
+  min-height: 20px;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    1px 1px 0px 0px var(--win95-dark);
+}
+
+html[data-design="windows95"] .close-btn:hover {
+  background: var(--bg-hover);
+}
+
+/* Modal body needs padding since we removed it from dialog.modal */
+html[data-design="windows95"] dialog.modal > *:not(.modal-header) {
+  padding: 12px 16px;
+}
+
+/* ── Calendar ──────────────────────────────────────────────── */
+
+html[data-design="windows95"] .calendar-grid {
+  gap: 1px;
+  background: var(--win95-shadow);
+}
+
+html[data-design="windows95"] .calendar-header {
+  font-size: 0.75rem;
+  text-transform: none;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+html[data-design="windows95"] .calendar-day {
+  background: var(--win95-input-bg);
+  border-radius: 0;
+  border: none;
+  font-size: 0.8rem;
+}
+
+html[data-design="windows95"] .calendar-day:hover {
+  background: var(--win95-titlebar);
+  color: var(--win95-titlebar-text);
+}
+
+html[data-design="windows95"] .calendar-day.today {
+  border: 2px solid var(--win95-titlebar);
+  border-radius: 0;
+}
+
+html[data-design="windows95"] .calendar-day.has-work {
+  background: #c0dcc0; /* Classic Win95 pale green */
+}
+
+html[data-design="windows95"] .calendar-day.weekend {
+  background: #f0f0f0;
+}
+
+html[data-design="windows95"] .calendar-day.weekend.has-work {
+  background: #b0d4b0;
+}
+
+/* ── Upload Zone ───────────────────────────────────────────── */
+
+html[data-design="windows95"] .upload-zone {
+  border: 2px dashed var(--win95-shadow);
+  border-radius: 0;
+  background: var(--win95-input-bg);
+  padding: 32px;
+}
+
+html[data-design="windows95"] .upload-zone:hover {
+  border-color: var(--win95-titlebar);
+  background: #f0f0ff;
+}
+
+/* ── Toast ─────────────────────────────────────────────────── */
+
+html[data-design="windows95"] .toast {
+  background: var(--win95-surface);
+  border: none;
+  border-radius: 0;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    2px 2px 0px 0px var(--win95-dark);
+}
+
+html[data-design="windows95"] .toast.success {
+  border-color: transparent;
+  border-left: 4px solid var(--accent-green);
+}
+
+html[data-design="windows95"] .toast.error {
+  border-color: transparent;
+  border-left: 4px solid var(--accent-red);
+}
+
+/* ── Theme Switch (the switcher itself) ────────────────────── */
+
+html[data-design="windows95"] .theme-switch {
+  background: var(--win95-surface);
+  border: none;
+  border-radius: 0;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-shadow),
+    inset -1px -1px 0px 0px var(--win95-highlight),
+    inset 2px 2px 0px 0px var(--win95-dark);
+  padding: 4px;
+}
+
+html[data-design="windows95"] .theme-switch-btn {
+  border-radius: 0;
+  font-size: 0.85rem;
+  font-weight: 400;
+  padding: 4px 12px;
+  transition: none;
+}
+
+html[data-design="windows95"] .theme-switch-btn:hover {
+  background: var(--bg-hover);
+}
+
+html[data-design="windows95"] .theme-switch-btn.active {
+  background: var(--win95-titlebar);
+  color: white;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-shadow),
+    inset -1px -1px 0px 0px var(--win95-highlight);
+}
+
+/* ── Page Header ───────────────────────────────────────────── */
+
+html[data-design="windows95"] .page-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+html[data-design="windows95"] .page-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* ── DB Status ─────────────────────────────────────────────── */
+
+html[data-design="windows95"] .db-status {
+  background: var(--win95-surface);
+  border-radius: 0;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-shadow),
+    inset -1px -1px 0px 0px var(--win95-highlight);
+}
+
+/* ── User Selector ─────────────────────────────────────────── */
+
+html[data-design="windows95"] .user-selector-trigger {
+  border-radius: 0;
+  background: var(--win95-surface);
+  border: none;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    1px 1px 0px 0px var(--win95-dark);
+}
+
+html[data-design="windows95"] .user-selector-trigger:hover {
+  background: var(--bg-hover);
+  border-color: transparent;
+}
+
+html[data-design="windows95"] .user-selector-dropdown {
+  border-radius: 0;
+  background: var(--win95-surface);
+  border: none;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    2px 2px 0px 0px var(--win95-dark);
+  animation: none;
+}
+
+html[data-design="windows95"] .user-option {
+  border-radius: 0;
+  font-weight: 400;
+}
+
+html[data-design="windows95"] .user-option.active {
+  background: var(--win95-titlebar);
+  color: var(--win95-titlebar-text);
+}
+
+html[data-design="windows95"] .user-option:hover {
+  background: var(--win95-titlebar);
+  color: var(--win95-titlebar-text);
+}
+
+html[data-design="windows95"] .user-add-input {
+  border-radius: 0;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-shadow),
+    inset -1px -1px 0px 0px var(--win95-highlight),
+    inset 2px 2px 0px 0px var(--win95-dark);
+}
+
+/* ── Scrollbar (Webkit) ────────────────────────────────────── */
+
+html[data-design="windows95"] ::-webkit-scrollbar {
+  width: 16px;
+}
+
+html[data-design="windows95"] ::-webkit-scrollbar-track {
+  background: var(--win95-light);
+}
+
+html[data-design="windows95"] ::-webkit-scrollbar-thumb {
+  background: var(--win95-surface);
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow),
+    1px 1px 0px 0px var(--win95-dark);
+}
+
+html[data-design="windows95"] ::-webkit-scrollbar-button {
+  background: var(--win95-surface);
+  height: 16px;
+  box-shadow:
+    inset 1px 1px 0px 0px var(--win95-highlight),
+    inset -1px -1px 0px 0px var(--win95-shadow);
+}
+
+/* ── Footer ────────────────────────────────────────────────── */
+
+html[data-design="windows95"] .footer {
+  border-top: none;
+  box-shadow: inset 0 1px 0 0 var(--win95-shadow);
+  padding-top: 12px;
+}
+
+html[data-design="windows95"] .footer-credits a {
+  color: var(--win95-titlebar);
+}
+
+/* ── Altro Dropup Menu (mobile) ────────────────────────────── */
+
+@media (max-width: 768px) {
+  html[data-design="windows95"] .altro-dropup-menu {
+    border-radius: 0;
+    background: var(--win95-surface);
+    border: none;
+    box-shadow:
+      inset 1px 1px 0px 0px var(--win95-highlight),
+      inset -1px -1px 0px 0px var(--win95-shadow),
+      2px 2px 0px 0px var(--win95-dark);
+  }
+
+  html[data-design="windows95"] .altro-menu-item {
+    border-radius: 0;
+  }
+
+  html[data-design="windows95"] .altro-menu-item:hover,
+  html[data-design="windows95"] .altro-menu-item:focus {
+    background: var(--win95-titlebar);
+    color: var(--win95-titlebar-text);
+  }
+
+  html[data-design="windows95"] .altro-menu-item.active {
+    background: var(--win95-titlebar);
+    color: var(--win95-titlebar-text);
+  }
+
+  html[data-design="windows95"] .nav-items {
+    background: var(--win95-surface);
+    border-top: none;
+    box-shadow:
+      inset 0 1px 0 0 var(--win95-highlight),
+      0 -1px 0 0 var(--win95-dark);
+  }
+}
+
+/* ── Grids — tighter spacing ───────────────────────────────── */
+
+html[data-design="windows95"] .grid-2,
+html[data-design="windows95"] .grid-3,
+html[data-design="windows95"] .grid-4 {
+  gap: 8px;
+}
