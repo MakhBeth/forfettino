@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { CalendarClock, Euro, Percent, Info, Save, RefreshCw, Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { ALIQUOTA_RIDOTTA, ALIQUOTA_STANDARD, COEFFICIENTI_ATECO } from '../../lib/constants/fiscali';
 import { calcolaFiscale } from '../../lib/utils/calculations';
+import { calcolaAccontiForfettario, calcolaContributiPrevidenziali, calcolaCoefficienteMedioAteco, getAliquotaImpostaSostitutiva, getInpsCalculationInput, includeInpsInScadenze, usesFixedContributiPrevidenziali } from '../../lib/utils/forfettario';
 import { generatePaymentSchedule, calculateScheduleTotals } from '../../lib/utils/paymentScheduler';
 import { parseDateLocal, formatDateLong } from '../../lib/utils/dateHelpers';
 import { parseCurrency, formatCurrency } from '../../lib/utils/formatting';
@@ -24,6 +24,8 @@ export function Scadenze() {
   const [manualAccontiIrpef, setManualAccontiIrpef] = useState<string>('');
   const [manualAccontiInps, setManualAccontiInps] = useState<string>('');
   const [useManualAcconti, setUseManualAcconti] = useState(false);
+  
+  const [manualContributiVersati, setManualContributiVersati] = useState<string>('');
 
   const annoVersamento = annoRiferimento + 1;
   const savedScadenze = getScadenzeByYear(annoVersamento);
@@ -55,18 +57,14 @@ export function Scadenze() {
     }
   }, [paidAccontiFromDb.irpefPaid, paidAccontiFromDb.inpsPaid, useManualAcconti, annoRiferimento, savedAccontiFromScadenze]);
 
-  const anniAttivita = annoCorrente - config.annoApertura;
-  const aliquotaIrpefBase = anniAttivita < 5 ? ALIQUOTA_RIDOTTA : ALIQUOTA_STANDARD;
-  const aliquotaIrpef = (config.aliquotaOverride !== null && config.aliquotaOverride >= 0 && config.aliquotaOverride <= 100)
-    ? config.aliquotaOverride / 100
-    : aliquotaIrpefBase;
+  const aliquotaIrpef = getAliquotaImpostaSostitutiva({
+    annoApertura: config.annoApertura,
+    annoImposta: annoRiferimento,
+    aliquotaOverride: config.aliquotaOverride,
+  });
 
   const coefficienteMedio = useMemo(() => {
-    if (config.codiciAteco.length === 0) return COEFFICIENTI_ATECO.default;
-    return config.codiciAteco.reduce((sum, code) => {
-      const prefix = code.substring(0, 2);
-      return sum + (COEFFICIENTI_ATECO[prefix] || COEFFICIENTI_ATECO.default);
-    }, 0) / config.codiciAteco.length;
+    return calcolaCoefficienteMedioAteco(config.codiciAteco);
   }, [config.codiciAteco]);
 
   const fattureAnnoRiferimento = useMemo(() => {
@@ -81,49 +79,38 @@ export function Scadenze() {
   const parsedManualFatturato = parseCurrency(manualFatturato);
   const totaleFatturato = useManualFatturato ? parsedManualFatturato : fatturatoFromRecords;
   
-  const fiscale = calcolaFiscale(totaleFatturato, coefficienteMedio, aliquotaIrpef);
+  const parsedAccontiIrpef = parseCurrency(manualAccontiIrpef);
+  const parsedAccontiInps = parseCurrency(manualAccontiInps);
+  const parsedContributiVersati = parseCurrency(manualContributiVersati);
+
+  const fiscale = calcolaFiscale(totaleFatturato, coefficienteMedio, aliquotaIrpef, getInpsCalculationInput(config), parsedContributiVersati || undefined);
   const redditoImponibile = fiscale.imponibile;
   const irpefTotale = fiscale.irpef;
   const inpsTotale = fiscale.inps;
-  
-  const parsedAccontiIrpef = parseCurrency(manualAccontiIrpef);
-  const parsedAccontiInps = parseCurrency(manualAccontiInps);
+  const previdenzialeInfo = calcolaContributiPrevidenziali(redditoImponibile, config);
+  const includeInpsSchedule = includeInpsInScadenze(config.gestionePrevidenziale);
+  const usesFixedInps = usesFixedContributiPrevidenziali(config.gestionePrevidenziale);
 
   const taxAmounts = useMemo(() => {
-    const taxSaldoLordo = irpefTotale;
-    const taxSaldo = Math.max(0, taxSaldoLordo - parsedAccontiIrpef);
-    const tax1stAcconto = irpefTotale * 0.4;
-    const tax2ndAcconto = irpefTotale * 0.6;
-    
-    const inpsSaldoLordo = inpsTotale;
-    const inpsSaldo = Math.max(0, inpsSaldoLordo - parsedAccontiInps);
-    const inps1stAcconto = inpsTotale * 0.4;
-    const inps2ndAcconto = inpsTotale * 0.6;
-
-    return {
-      taxSaldoLordo,
-      taxSaldo,
-      tax1stAcconto,
-      tax2ndAcconto,
-      inpsSaldoLordo,
-      inpsSaldo,
-      inps1stAcconto,
-      inps2ndAcconto,
-      accontiIrpefPagati: parsedAccontiIrpef,
+    return calcolaAccontiForfettario({
+      gestionePrevidenziale: config.gestionePrevidenziale,
+      impostaSostitutiva: irpefTotale,
+      inps: inpsTotale,
+      accontiImpostaPagati: parsedAccontiIrpef,
       accontiInpsPagati: parsedAccontiInps,
-    };
-  }, [irpefTotale, inpsTotale, parsedAccontiIrpef, parsedAccontiInps]);
+    });
+  }, [config.gestionePrevidenziale, irpefTotale, inpsTotale, parsedAccontiIrpef, parsedAccontiInps]);
 
   const scheduleInput: PaymentScheduleInput = useMemo(() => ({
     totalTaxSaldo: taxAmounts.taxSaldo,
     totalTax1stAcconto: taxAmounts.tax1stAcconto,
     totalTax2ndAcconto: taxAmounts.tax2ndAcconto,
-    totalInpsSaldo: taxAmounts.inpsSaldo,
-    totalInps1stAcconto: taxAmounts.inps1stAcconto,
-    totalInps2ndAcconto: taxAmounts.inps2ndAcconto,
+    totalInpsSaldo: includeInpsSchedule ? taxAmounts.inpsSaldo : 0,
+    totalInps1stAcconto: includeInpsSchedule ? taxAmounts.inps1stAcconto : 0,
+    totalInps2ndAcconto: includeInpsSchedule ? taxAmounts.inps2ndAcconto : 0,
     numberOfTranches,
     fiscalYear: annoVersamento,
-  }), [taxAmounts, numberOfTranches, annoVersamento]);
+  }), [taxAmounts, numberOfTranches, annoVersamento, includeInpsSchedule]);
 
   const schedule = useMemo(() => generatePaymentSchedule(scheduleInput), [scheduleInput]);
   const totals = useMemo(() => calculateScheduleTotals(schedule), [schedule]);
@@ -190,7 +177,7 @@ export function Scadenze() {
           annoVersamento,
           date: item.date,
           tipo: 'saldo_irpef',
-          label: isSummerBundle && totalTranches > 1 ? `Saldo IRPEF (${trancheIndex + 1}/${totalTranches})` : 'Saldo IRPEF',
+          label: isSummerBundle && totalTranches > 1 ? `Saldo imposta sostitutiva (${trancheIndex + 1}/${totalTranches})` : 'Saldo imposta sostitutiva',
           importo: item.components.taxSaldo,
           interessi,
           totale: round2(item.components.taxSaldo + interessi),
@@ -213,8 +200,8 @@ export function Scadenze() {
           date: item.date,
           tipo: 'acconto_irpef',
           label: isSecondAcconto 
-            ? 'Secondo Acconto IRPEF' 
-            : (isSummerBundle && totalTranches > 1 ? `Primo Acconto IRPEF (${trancheIndex + 1}/${totalTranches})` : 'Primo Acconto IRPEF'),
+            ? 'Secondo acconto imposta sostitutiva' 
+            : (isSummerBundle && totalTranches > 1 ? `Primo acconto imposta sostitutiva (${trancheIndex + 1}/${totalTranches})` : 'Primo acconto imposta sostitutiva'),
           importo: item.components.taxAcconto,
           interessi,
           totale: round2(item.components.taxAcconto + interessi),
@@ -441,23 +428,58 @@ export function Scadenze() {
               <span style={{ color: 'var(--text-muted)' }}> ({coefficienteMedio}%)</span>
             </div>
             <div>
-              <span style={{ color: 'var(--text-muted)' }}>IRPEF dovuta: </span>
+              <span style={{ color: 'var(--text-muted)' }}>Imposta sostitutiva dovuta: </span>
               <strong><Currency amount={irpefTotale} /></strong>
             </div>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>INPS dovuta: </span>
               <strong><Currency amount={inpsTotale} /></strong>
+              <span style={{ color: 'var(--text-muted)' }}> ({previdenzialeInfo.label}{previdenzialeInfo.reductionApplied ? ' · riduzione 35%' : ''})</span>
+            </div>
+          </div>
+
+          <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div style={{ flex: '1 1 250px' }}>
+                <label htmlFor="contributi-versati-input" style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  Contributi INPS versati nel {annoRiferimento}
+                </label>
+                <div style={{ position: 'relative', maxWidth: 250 }}>
+                  <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>€</span>
+                  <input
+                    id="contributi-versati-input"
+                    type="text"
+                    inputMode="decimal"
+                    className="input-field"
+                    placeholder="0"
+                    value={manualContributiVersati}
+                    onChange={(e) => setManualContributiVersati(e.target.value)}
+                    style={{ paddingLeft: 32, fontFamily: 'Space Mono, monospace' }}
+                  />
+                </div>
+              </div>
+              <div style={{ flex: '1 1 250px', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Importo INPS effettivamente pagato durante l'anno {annoRiferimento} (per cassa).
+                Viene dedotto dall'imponibile per calcolare l'imposta sostitutiva.
+                {!parsedContributiVersati && (
+                  <span style={{ display: 'block', marginTop: 4, color: 'var(--accent-orange)' }}>
+                    Se non specificato, si deduce l'intero INPS dovuto.
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div className="card" style={{ marginBottom: 24 }}>
-        <h2 className="card-title">Acconti già versati (anno precedente)</h2>
+        <h2 className="card-title">Versamenti già registrati (anno precedente)</h2>
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>
           {paidAccontiFromDb.irpefPaid > 0 || paidAccontiFromDb.inpsPaid > 0 
             ? 'Acconti calcolati dalle scadenze marcate come pagate. Puoi sovrascrivere manualmente.'
-            : 'Inserisci gli acconti IRPEF e INPS già versati per calcolare il saldo netto.'
+            : usesFixedInps
+              ? 'Inserisci gli acconti di imposta sostitutiva e gli eventuali contributi INPS già versati per stimare il residuo annuo.'
+              : 'Inserisci gli acconti di imposta sostitutiva e INPS già versati per calcolare il saldo netto.'
           }
         </p>
         
@@ -478,7 +500,7 @@ export function Scadenze() {
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 200px' }}>
             <label style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Acconti IRPEF già pagati
+              Acconti imposta sostitutiva già pagati
             </label>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>€</span>
@@ -495,7 +517,7 @@ export function Scadenze() {
           </div>
           <div style={{ flex: '1 1 200px' }}>
             <label style={{ display: 'block', marginBottom: 8, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              Acconti INPS già pagati
+              {usesFixedInps ? 'Contributi INPS già pagati' : 'Acconti INPS già pagati'}
             </label>
             <div style={{ position: 'relative' }}>
               <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>€</span>
@@ -517,7 +539,7 @@ export function Scadenze() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 24px' }}>
               {taxAmounts.accontiIrpefPagati > 0 && (
                 <div>
-                  <span style={{ color: 'var(--text-muted)' }}>Saldo IRPEF: </span>
+                  <span style={{ color: 'var(--text-muted)' }}>Saldo imposta sostitutiva: </span>
                   <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}><Currency amount={taxAmounts.taxSaldoLordo} /></span>
                   <span style={{ color: 'var(--accent-green)', fontWeight: 600, marginLeft: 8 }}><Currency amount={taxAmounts.taxSaldo} /></span>
                 </div>
@@ -533,6 +555,15 @@ export function Scadenze() {
           </div>
         )}
       </div>
+
+      {!includeInpsSchedule && (
+        <div className="card" style={{ marginBottom: 24, borderLeft: '4px solid var(--accent-primary)' }}>
+          <h2 className="card-title"><Info size={16} style={{ marginRight: 6, verticalAlign: 'middle' }} />INPS fuori piano scadenze</h2>
+          <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+            Per {previdenzialeInfo.label} l'app usa l'importo INPS annuo fisso nelle stime fiscali, ma non lo inserisce nel piano di giugno/novembre perché questi contributi seguono scadenze trimestrali dedicate.
+          </p>
+        </div>
+      )}
 
       <div className="grid-3" style={{ marginBottom: 24 }}>
         <div className="card">
@@ -681,8 +712,8 @@ export function Scadenze() {
                         <td>
                           <span style={{ fontWeight: 500 }}>{item.label}</span>
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                            {item.components.taxSaldo > 0 && `Saldo IRPEF €${formatCurrency(item.components.taxSaldo)}`}
-                            {item.components.taxAcconto > 0 && ` · Acc. IRPEF €${formatCurrency(item.components.taxAcconto)}`}
+                          {item.components.taxSaldo > 0 && `Saldo imposta sostitutiva €${formatCurrency(item.components.taxSaldo)}`}
+                          {item.components.taxAcconto > 0 && ` · Acc. imposta sostitutiva €${formatCurrency(item.components.taxAcconto)}`}
                             {item.components.inpsSaldo > 0 && ` · Saldo INPS €${formatCurrency(item.components.inpsSaldo)}`}
                             {item.components.inpsAcconto > 0 && ` · Acc. INPS €${formatCurrency(item.components.inpsAcconto)}`}
                           </div>
@@ -717,7 +748,7 @@ export function Scadenze() {
             <strong>Secondo Acconto</strong>: da versare in unica soluzione entro il 30 novembre, senza possibilità di rateizzazione.
           </p>
           <p>
-            <strong>Nota</strong>: se il 30 giugno cade di sabato o domenica, la scadenza slitta al lunedì successivo. Le rate di agosto hanno scadenza il 20 invece del 16.
+            <strong>Nota</strong>: l'imposta sostitutiva usa due acconti del 50%. L'INPS viene rateizzato nel piano solo per la Gestione Separata (40% + 40% con metodo storico); per Artigiani e Commercianti resta fuori da questo calendario. Se il 30 giugno cade di sabato o domenica, la scadenza slitta al lunedì successivo. Le rate di agosto hanno scadenza il 20 invece del 16.
           </p>
         </div>
       </div>

@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, Layers, Clock } from 'lucide-react';
+import { Sparkles, Layers, Clock, Monitor } from 'lucide-react';
 
-// Import design CSS files - they are scoped by data-design attribute
 import '../../styles/prototypes/refined.css';
 import '../../styles/prototypes/neomorphism.css';
+import '../../styles/prototypes/windows95.css';
 
-export type DesignStyle = 'default' | 'newage' | 'legacy';
+export type DesignStyle = 'default' | 'newage' | 'legacy' | 'windows95';
 
 const DESIGN_STYLES: { value: DesignStyle; label: string; description: string; icon: typeof Sparkles }[] = [
   { value: 'default', label: 'Default', description: 'Design raffinato', icon: Sparkles },
   { value: 'newage', label: 'New Age', description: 'Ombre morbide, effetto 3D', icon: Layers },
+  { value: 'windows95', label: 'Windows 95', description: 'Retro, effetto 3D pixelato', icon: Monitor },
   { value: 'legacy', label: 'Legacy', description: 'Design originale', icon: Clock },
 ];
 

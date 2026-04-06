@@ -45,8 +45,8 @@ export function ScadenzaDetailModal({ isOpen, onClose, selectedDate }: ScadenzaD
 
   const getTipoLabel = (tipo: string) => {
     switch (tipo) {
-      case 'saldo_irpef': return 'Saldo IRPEF';
-      case 'acconto_irpef': return 'Acconto IRPEF';
+      case 'saldo_irpef': return 'Saldo imposta sostitutiva';
+      case 'acconto_irpef': return 'Acconto imposta sostitutiva';
       case 'saldo_inps': return 'Saldo INPS';
       case 'acconto_inps': return 'Acconto INPS';
       default: return tipo;

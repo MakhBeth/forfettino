@@ -66,6 +66,8 @@ export interface ValutaConfig {
   simbolo: string; // e.g. "€", "£", "$"
 }
 
+export type GestionePrevidenziale = 'gestione_separata' | 'artigiani' | 'commercianti';
+
 export interface Config {
   id: string;
   userId: string;
@@ -77,6 +79,9 @@ export interface Config {
   partitaIva?: string;
   annoApertura: number;
   codiciAteco: string[];
+  gestionePrevidenziale: GestionePrevidenziale;
+  contributiInpsFissi: number | null;
+  riduzioneContributiva: boolean;
   iban?: string;
   valute?: ValutaConfig[];
   courtesyInvoice?: CourtesyInvoiceConfig;

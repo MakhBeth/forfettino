@@ -1,6 +1,10 @@
 import type { WorkLog } from '../../types';
 import { LIMITE_FATTURATO, INPS_GESTIONE_SEPARATA, COEFFICIENTI_ATECO } from '../constants/fiscali';
 
+export type InpsCalculationInput = number | { annualAmount: number };
+
+const roundToTwoDecimals = (value: number): number => Math.round(value * 100) / 100;
+
 // Get work log quantity (handles legacy ore field)
 export const getWorkLogQuantita = (log: WorkLog): number => {
   // If quantita is defined, use it
@@ -35,23 +39,36 @@ export interface CalcoloFiscale {
   percentualeLimite: number;
 }
 
-// Calcolo fiscale forfettario completo.
-// I contributi previdenziali (INPS) sono deducibili dal reddito imponibile
-// prima di applicare l'imposta sostitutiva (art. 1, c. 64, L. 190/2014).
+// Art. 1, c. 64, L. 190/2014: si deducono i contributi INPS effettivamente
+// versati nell'anno d'imposta. Se contributiVersati è omesso, si deduce
+// l'intero INPS dovuto (stima conservativa per simulazioni).
 export const calcolaFiscale = (
   fatturato: number,
   coefficiente: number,
   aliquotaIrpef: number,
-  aliquotaInps: number = INPS_GESTIONE_SEPARATA,
+  aliquotaInps: InpsCalculationInput = INPS_GESTIONE_SEPARATA,
+  contributiVersati?: number,
 ): CalcoloFiscale => {
   const imponibile = fatturato * (coefficiente / 100);
-  const inps = imponibile * aliquotaInps;
-  const irpef = (imponibile - inps) * aliquotaIrpef;
+  const inps = typeof aliquotaInps === 'number'
+    ? imponibile * aliquotaInps
+    : aliquotaInps.annualAmount;
+  const deduzioneContributi = contributiVersati !== undefined ? contributiVersati : inps;
+  const imponibileDopoContributi = Math.max(0, imponibile - deduzioneContributi);
+  const irpef = imponibileDopoContributi * aliquotaIrpef;
   const totaleTasse = irpef + inps;
   const nettoStimato = fatturato - totaleTasse;
   const percentualeNetto = fatturato > 0 ? (nettoStimato / fatturato) * 100 : 0;
   const percentualeLimite = (fatturato / LIMITE_FATTURATO) * 100;
-  return { imponibile, inps, irpef, totaleTasse, nettoStimato, percentualeNetto, percentualeLimite };
+  return {
+    imponibile: roundToTwoDecimals(imponibile),
+    inps: roundToTwoDecimals(inps),
+    irpef: roundToTwoDecimals(irpef),
+    totaleTasse: roundToTwoDecimals(totaleTasse),
+    nettoStimato: roundToTwoDecimals(nettoStimato),
+    percentualeNetto,
+    percentualeLimite,
+  };
 };
 
 // Calculate progress percentage towards limit

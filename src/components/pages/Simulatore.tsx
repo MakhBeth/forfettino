@@ -9,12 +9,17 @@ import {
 import { useApp } from "../../context/AppContext";
 import {
   LIMITE_FATTURATO,
-  INPS_GESTIONE_SEPARATA,
-  ALIQUOTA_RIDOTTA,
-  ALIQUOTA_STANDARD,
-  COEFFICIENTI_ATECO,
+  LIMITE_USCITA_IMMEDIATA,
 } from "../../lib/constants/fiscali";
 import { calcolaFiscale } from "../../lib/utils/calculations";
+import {
+  calcolaContributiPrevidenziali,
+  calcolaCoefficienteMedioAteco,
+  getGestionePrevidenzialeLabel,
+  getAliquotaImpostaSostitutiva,
+  getInpsCalculationInput,
+  getRegimeThresholdStatus,
+} from "../../lib/utils/forfettario";
 import { parseCurrency, formatCurrency } from "../../lib/utils/formatting";
 import { Currency } from "../ui/Currency";
 
@@ -24,29 +29,25 @@ export function Simulatore() {
 
   const annoCorrente = new Date().getFullYear();
   const anniAttivita = annoCorrente - config.annoApertura;
-  const aliquotaIrpefBase =
-    anniAttivita < 5 ? ALIQUOTA_RIDOTTA : ALIQUOTA_STANDARD;
-  const aliquotaIrpefDefault =
-    config.aliquotaOverride !== null &&
-    config.aliquotaOverride >= 0 &&
-    config.aliquotaOverride <= 100
-      ? config.aliquotaOverride / 100
-      : aliquotaIrpefBase;
+  const aliquotaIrpefDefault = getAliquotaImpostaSostitutiva({
+    annoApertura: config.annoApertura,
+    annoImposta: annoCorrente,
+    aliquotaOverride: config.aliquotaOverride,
+  });
 
   const coefficienteDefault = useMemo(() => {
-    if (config.codiciAteco.length === 0) return COEFFICIENTI_ATECO.default;
-    return (
-      config.codiciAteco.reduce((sum, code) => {
-        const prefix = code.substring(0, 2);
-        return sum + (COEFFICIENTI_ATECO[prefix] || COEFFICIENTI_ATECO.default);
-      }, 0) / config.codiciAteco.length
-    );
+    return calcolaCoefficienteMedioAteco(config.codiciAteco);
   }, [config.codiciAteco]);
 
   // Stati per valori editabili con default dai calcoli
   const [coefficienteCustom, setCoefficienteCustom] = useState<string>("");
   const [aliquotaIrpefCustom, setAliquotaIrpefCustom] = useState<string>("");
   const [inpsCustom, setInpsCustom] = useState<string>("");
+  const isGestioneSeparata = config.gestionePrevidenziale === "gestione_separata";
+  const inpsOverride = inpsCustom !== "" ? (parseFloat(inpsCustom) || 0) / 100 : null;
+  const inpsInput = isGestioneSeparata
+    ? inpsOverride ?? getInpsCalculationInput(config)
+    : getInpsCalculationInput(config);
 
   // Valori effettivi usati nei calcoli
   const coefficienteMedio = coefficienteCustom !== ""
@@ -55,17 +56,32 @@ export function Simulatore() {
   const aliquotaIrpef = aliquotaIrpefCustom !== ""
     ? (parseFloat(aliquotaIrpefCustom) || 0) / 100
     : aliquotaIrpefDefault;
-  const aliquotaInps = inpsCustom !== ""
-    ? (parseFloat(inpsCustom) || 0) / 100
-    : INPS_GESTIONE_SEPARATA;
 
   const fatturatoNum = parseCurrency(fatturato);
 
   const calculations = useMemo(() => {
-    return calcolaFiscale(fatturatoNum, coefficienteMedio, aliquotaIrpef, aliquotaInps);
-  }, [fatturatoNum, coefficienteMedio, aliquotaIrpef, aliquotaInps]);
+    return calcolaFiscale(fatturatoNum, coefficienteMedio, aliquotaIrpef, inpsInput);
+  }, [fatturatoNum, coefficienteMedio, aliquotaIrpef, inpsInput]);
 
-  const isOverLimit = fatturatoNum > LIMITE_FATTURATO;
+  const previdenzialeInfo = useMemo(() => {
+    if (isGestioneSeparata) {
+      const effectiveRate = typeof inpsInput === "number" ? inpsInput : null;
+      return {
+        label: getGestionePrevidenzialeLabel(config.gestionePrevidenziale),
+        amount: calculations.inps,
+        usesFixedAmount: false,
+        includeInpsInScadenze: true,
+        effectiveRate,
+        baseFixedAmount: null,
+        reductionApplied: false,
+      };
+    }
+
+    return calcolaContributiPrevidenziali(calculations.imponibile, config);
+  }, [calculations.imponibile, calculations.inps, config, inpsInput, isGestioneSeparata]);
+
+  const thresholdStatus = getRegimeThresholdStatus(fatturatoNum);
+  const isOverLimit = thresholdStatus !== "within_limit";
 
   return (
     <>
@@ -165,8 +181,13 @@ export function Simulatore() {
           >
             <TrendingUp size={18} aria-hidden="true" />
             <span>
-              Attenzione: superi il limite di{" "}
-              <Currency amount={LIMITE_FATTURATO} /> per il regime forfettario!
+              {thresholdStatus === "immediate_exit"
+                ? <>
+                    Attenzione: superi <Currency amount={LIMITE_USCITA_IMMEDIATA} />. L'uscita dal regime forfettario è immediata.
+                  </>
+                : <>
+                    Attenzione: superi la soglia ordinaria di <Currency amount={LIMITE_FATTURATO} />. L'uscita dal regime forfettario avviene dall'anno successivo.
+                  </>}
             </span>
           </div>
         )}
@@ -214,7 +235,7 @@ export function Simulatore() {
               )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <label htmlFor="irpef-input" style={{ color: "var(--text-muted)" }}>IRPEF:</label>
+              <label htmlFor="irpef-input" style={{ color: "var(--text-muted)" }}>Imposta:</label>
               <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
                 <input
                   id="irpef-input"
@@ -245,32 +266,43 @@ export function Simulatore() {
                 <span style={{ color: "var(--accent-green)", fontSize: "0.75rem" }}>(agevolata)</span>
               )}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <label htmlFor="inps-input" style={{ color: "var(--text-muted)" }}>INPS:</label>
-              <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
-                <input
-                  id="inps-input"
-                  type="text"
-                  inputMode="decimal"
-                  value={inpsCustom !== "" ? inpsCustom : (INPS_GESTIONE_SEPARATA * 100).toFixed(2)}
-                  onChange={(e) => setInpsCustom(e.target.value)}
-                  style={{
-                    width: "fit-content",
-                    minWidth: "5ch",
-                    fieldSizing: "content",
-                    padding: "6px 28px 6px 10px",
-                    fontSize: "1rem",
-                    fontWeight: 600,
-                    background: "var(--bg-card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                    color: "var(--text-primary)",
-                    fontFamily: "Space Mono, monospace",
-                  } as React.CSSProperties}
-                />
-                <span style={{ position: "absolute", right: 10, color: "var(--text-muted)", fontSize: "1rem" }}>%</span>
+            {isGestioneSeparata ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <label htmlFor="inps-input" style={{ color: "var(--text-muted)" }}>INPS:</label>
+                <div style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+                  <input
+                    id="inps-input"
+                    type="text"
+                    inputMode="decimal"
+                    value={inpsCustom !== "" ? inpsCustom : ((previdenzialeInfo.effectiveRate ?? 0) * 100).toFixed(2)}
+                    onChange={(e) => setInpsCustom(e.target.value)}
+                    style={{
+                      width: "fit-content",
+                      minWidth: "5ch",
+                      fieldSizing: "content",
+                      padding: "6px 28px 6px 10px",
+                      fontSize: "1rem",
+                      fontWeight: 600,
+                      background: "var(--bg-card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      color: "var(--text-primary)",
+                      fontFamily: "Space Mono, monospace",
+                    } as React.CSSProperties}
+                  />
+                  <span style={{ position: "absolute", right: 10, color: "var(--text-muted)", fontSize: "1rem" }}>%</span>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ color: "var(--text-muted)" }}>INPS:</span>
+                <span style={{ fontWeight: 600 }}><Currency amount={previdenzialeInfo.amount} /></span>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>
+                  {previdenzialeInfo.label}
+                  {previdenzialeInfo.reductionApplied && " · riduzione 35%"}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -298,14 +330,12 @@ export function Simulatore() {
               style={{ marginRight: 6, verticalAlign: "middle" }}
               aria-hidden="true"
             />
-            IRPEF
+            Imposta sostitutiva
           </h2>
           <div className="stat-value" style={{ color: "var(--accent-orange)" }}>
             <Currency amount={calculations.irpef} />
           </div>
-          <div className="stat-label">
-            {(aliquotaIrpef * 100).toFixed(0)}% dell'imponibile
-          </div>
+            <div className="stat-label">{(aliquotaIrpef * 100).toFixed(0)}% di (imponibile − INPS)</div>
         </div>
 
         <div className="card">
@@ -320,7 +350,11 @@ export function Simulatore() {
           <div className="stat-value" style={{ color: "var(--accent-orange)" }}>
             <Currency amount={calculations.inps} />
           </div>
-          <div className="stat-label">Gestione Separata {(aliquotaInps * 100).toFixed(2)}%</div>
+          <div className="stat-label">
+            {previdenzialeInfo.usesFixedAmount
+              ? `${previdenzialeInfo.label}${previdenzialeInfo.reductionApplied ? " · riduzione 35%" : ""}`
+              : `${previdenzialeInfo.label} ${((previdenzialeInfo.effectiveRate ?? 0) * 100).toFixed(2)}%`}
+          </div>
         </div>
 
         <div className="card">
@@ -335,7 +369,7 @@ export function Simulatore() {
           <div className="stat-value" style={{ color: "var(--accent-red)" }}>
             <Currency amount={calculations.totaleTasse} />
           </div>
-          <div className="stat-label">IRPEF + INPS</div>
+          <div className="stat-label">Imposta sostitutiva + INPS</div>
         </div>
       </div>
 
@@ -417,7 +451,7 @@ export function Simulatore() {
                 </tr>
                 <tr>
                   <td style={{ color: "var(--accent-orange)" }}>
-                    - IRPEF ({(aliquotaIrpef * 100).toFixed(0)}%)
+                    - Imposta sostitutiva ({(aliquotaIrpef * 100).toFixed(0)}%)
                   </td>
                   <td
                     style={{
@@ -435,7 +469,9 @@ export function Simulatore() {
                 </tr>
                 <tr>
                   <td style={{ color: "var(--accent-orange)" }}>
-                    - INPS ({(aliquotaInps * 100).toFixed(2)}%)
+                    - INPS {previdenzialeInfo.usesFixedAmount
+                      ? `(${previdenzialeInfo.label}${previdenzialeInfo.reductionApplied ? " · -35%" : ""})`
+                      : `(${((previdenzialeInfo.effectiveRate ?? 0) * 100).toFixed(2)}%)`}
                   </td>
                   <td
                     style={{
@@ -508,7 +544,7 @@ export function Simulatore() {
           <div className="stat-label" style={{ marginTop: 8 }}>
             {isOverLimit
               ? `Superato di €${formatCurrency(fatturatoNum - LIMITE_FATTURATO)}`
-              : `Rimangono €${formatCurrency(LIMITE_FATTURATO - fatturatoNum)} (${(100 - calculations.percentualeLimite).toFixed(1)}%)`}
+              : `Rimangono €${formatCurrency(LIMITE_FATTURATO - fatturatoNum)} (${(100 - calculations.percentualeLimite).toFixed(1)}%) prima della soglia ordinaria`}
           </div>
         </div>
       )}

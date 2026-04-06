@@ -19,7 +19,12 @@ export function useConfig(dbManager: IndexedDBManager, dbReady: boolean, current
         const configId = `config_${currentUserId}`;
         const savedConfig = await dbManager.get('config', configId);
         if (savedConfig) {
-          setConfig(savedConfig);
+          setConfig({
+            ...DEFAULT_CONFIG,
+            ...savedConfig,
+            id: configId,
+            userId: currentUserId,
+          });
         } else {
           // Create default config for this user
           const newConfig: Config = {
